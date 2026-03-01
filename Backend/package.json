@@ -34,6 +34,7 @@
     "passport-google-oauth20": "^2.0.0",
     "pg": "^8.18.0",
     "pg-hstore": "^2.3.4",
+    "resend": "^6.9.3",
     "sequelize": "^6.37.7",
     "uuid": "^13.0.0"
   }
