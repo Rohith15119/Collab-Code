@@ -25,22 +25,15 @@ router.post("/create-session", authenticate, async (req, res) => {
 
 router.get("/my", authenticate, async (req, res) => {
   try {
-    const page = Math.max(parseInt(req.query.page) || 1, 1);
-    const limit = 10;
-    const skip = (page - 1) * limit;
-
     const sessions = await Session.find(
       { ownerId: req.user.id },
-      { title: 1, roomId: 1, updatedAt: 1 }, // only required fields
+      { title: 1, roomId: 1, updatedAt: 1 },
     )
       .sort({ updatedAt: -1 })
-      .skip(skip)
-      .limit(limit)
       .lean();
 
     res.status(200).json({
       success: true,
-      page,
       count: sessions.length,
       sessions,
     });
