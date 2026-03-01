@@ -63,18 +63,19 @@ app.post("/login", loginLimiter, loginValidation, async (req, res) => {
     const user = await User.findOne({ where: { email } });
 
     if (!user) {
-      return res.status(400).json({ error: "Invalid email or password" });
+      return res.status(403).json({ error: "Invalid email or password" });
     }
 
-    if (user.provider !== "local")
+    if (user.provider && user.provider !== "local") {
       return res
         .status(400)
         .json({ error: "Please login with your social account" });
+    }
 
     const isMatch = await bcrypt.compare(password, user.password);
 
     if (!isMatch) {
-      return res.status(400).json({ error: "Invalid email or password" });
+      return res.status(403).json({ error: "Invalid email or password" });
     }
 
     const { accessToken } = await generateTokens(user);
