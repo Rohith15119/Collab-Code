@@ -55,7 +55,7 @@ router.put("/:roomId", authenticate, async (req, res) => {
     const session = await Session.findOneAndUpdate(
       { roomId: req.params.roomId, ownerId: req.user.id },
       { code, language, title, fontSize },
-      { new: true },
+      { returnDocument: "after" },
     );
 
     if (!session) return res.status(404).json({ error: "Session not found" });
