@@ -45,6 +45,7 @@ app.post("/register", registerValidation, async (req, res) => {
       name,
       email,
       password: hashedPassword,
+      provider: "local",
     });
 
     res
@@ -81,8 +82,8 @@ app.post("/login", loginLimiter, loginValidation, async (req, res) => {
     // Set cookie
     res.cookie("token", accessToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      secure: true,
+      sameSite: "none",
       maxAge: 24 * 60 * 60 * 1000,
     });
 
@@ -197,8 +198,8 @@ app.get(
 
       res.cookie("token", token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production", // true in production (HTTPS)
-        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+        secure: true, // true in production (HTTPS)
+        sameSite: "none",
         maxAge: 24 * 60 * 60 * 1000,
       });
 
@@ -213,8 +214,8 @@ app.get(
 app.post("/logout", (req, res) => {
   res.cookie("token", "", {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    secure: true,
+    sameSite: "none",
     expires: new Date(0),
     path: "/",
   });

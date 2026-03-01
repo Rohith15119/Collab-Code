@@ -26,18 +26,13 @@ app.use(
   }),
 );
 app.use(cookieParser());
-
-if (process.env.NODE_ENV === "production") {
-  app.use(morgan("combined"));
-} else {
-  app.use(morgan("dev"));
-}
+app.use(morgan("combined"));
 
 app.use(helmet());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-const PORT = env.PORT || 5000;
+const PORT = 5000;
 
 const htmlPageContent = `
 <!DOCTYPE html>
