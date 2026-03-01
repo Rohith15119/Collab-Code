@@ -27,7 +27,7 @@ router.get("/my", authenticate, async (req, res) => {
   try {
     const sessions = await Session.find(
       { ownerId: req.user.id },
-      { title: 1, roomId: 1, updatedAt: 1 },
+      { title: 1, roomId: 1, updatedAt: 1, language: 1 },
     )
       .sort({ updatedAt: -1 })
       .lean();
