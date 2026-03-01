@@ -25,16 +25,28 @@ router.post("/create-session", authenticate, async (req, res) => {
 
 router.get("/my", authenticate, async (req, res) => {
   try {
-    const sessions = await Session.find({ ownerId: req.user.id }).sort({
-      updatedAt: -1,
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
+    const limit = 10;
+    const skip = (page - 1) * limit;
+
+    const sessions = await Session.find(
+      { ownerId: req.user.id },
+      { title: 1, roomId: 1, updatedAt: 1 }, // only required fields
+    )
+      .sort({ updatedAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean();
+
+    res.status(200).json({
+      success: true,
+      page,
+      count: sessions.length,
+      sessions,
     });
-
-    if (!sessions.length)
-      return res.status(200).json({ success: true, sessions: [] });
-
-    res.status(200).json({ success: true, sessions });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("MY SESSIONS ERROR:", err);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
