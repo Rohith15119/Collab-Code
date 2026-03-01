@@ -62,6 +62,10 @@ app.post("/login", loginLimiter, loginValidation, async (req, res) => {
 
     const user = await User.findOne({ where: { email } });
 
+    if (!user.password) {
+      return res.status(400).json({ error: "Account not properly configured" });
+    }
+
     if (!user) {
       return res.status(400).json({ error: "Invalid email or password" });
     }
