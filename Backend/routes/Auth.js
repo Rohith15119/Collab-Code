@@ -211,15 +211,16 @@ app.get(
 );
 
 app.post("/logout", (req, res) => {
-  res.clearCookie("token", {
+  res.cookie("token", "", {
     httpOnly: true,
-    secure: true,
-    sameSite: "none",
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    expires: new Date(0),
+    path: "/",
   });
 
   res.json({ success: true });
 });
-
 // Update name
 app.put("/profile", authenticate, async (req, res) => {
   try {
