@@ -62,12 +62,14 @@ app.post("/login", loginLimiter, loginValidation, async (req, res) => {
 
     const user = await User.findOne({ where: { email } });
 
-    if (!user.password) {
-      return res.status(400).json({ error: "Account not properly configured" });
-    }
-
+    // FIRST check if user exists
     if (!user) {
       return res.status(400).json({ error: "Invalid email or password" });
+    }
+
+    // THEN check password existence
+    if (!user.password) {
+      return res.status(400).json({ error: "Account not properly configured" });
     }
 
     if (user.provider && user.provider !== "local") {
@@ -82,9 +84,12 @@ app.post("/login", loginLimiter, loginValidation, async (req, res) => {
       return res.status(403).json({ error: "Invalid email or password" });
     }
 
-    const { accessToken } = await generateTokens(user);
+    const accessToken = jwt.sign(
+      { id: user.id, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" },
+    );
 
-    // Set cookie
     res.cookie("token", accessToken, {
       httpOnly: true,
       secure: true,
@@ -101,7 +106,8 @@ app.post("/login", loginLimiter, loginValidation, async (req, res) => {
       },
     });
   } catch (err) {
-    res.status(500).json({ error: "Internal server error" });
+    console.error("LOGIN ERROR:", err); // ADD THIS
+    res.status(500).json({ error: err.message || "Internal server error" });
   }
 });
 
