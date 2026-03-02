@@ -27,7 +27,7 @@ const loginLimiter = rateLimit({
 
 app.get("/me", authenticate, async (req, res) => {
   const user = await User.findByPk(req.user.id);
-  return res.json({ user });
+  return res.status(200).json({ user });
 });
 
 app.post("/register", registerValidation, async (req, res) => {
@@ -94,6 +94,7 @@ app.post("/login", loginLimiter, loginValidation, async (req, res) => {
       httpOnly: true,
       secure: true,
       sameSite: "none",
+      path: "/",
       maxAge: 24 * 60 * 60 * 1000,
     });
 
@@ -211,6 +212,7 @@ app.get(
         httpOnly: true,
         secure: true, // true in production (HTTPS)
         sameSite: "none",
+        path: "/",
         maxAge: 24 * 60 * 60 * 1000,
       });
 
