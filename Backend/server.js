@@ -21,7 +21,7 @@ app.set("trust proxy", 1);
 
 app.use(
   cors({
-    origin: env.CLIENT_URL,
+    origin: ["http://localhost:5173", "https://collab-code-one.vercel.app"],
     credentials: true,
   }),
 );
