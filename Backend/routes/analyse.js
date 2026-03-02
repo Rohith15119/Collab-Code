@@ -35,6 +35,8 @@ router.post("/analyze-complexity", limiter, async (req, res) => {
                 Do not add markdown.
                 Do not add extra text.
 
+                analyse the time complexity very depth and give very accurate and precise time complexity including space complexity too.
+
                 Code:
                 ${code}
                 `,
