@@ -432,7 +432,7 @@ export default function Editor() {
       style={{ height: "100dvh", width: "100vw", overflow: "hidden" }}
     >
       {/* ── TOP BAR ── */}
-      <div className="flex-shrink-0 flex flex-wrap items-center justify-between gap-2 px-3 py-2 bg-gray-900 border-b border-gray-800">
+      <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 px-3 py-2 bg-gray-900 border-b border-gray-800">
         {/* Left: back + title */}
         <div className="flex items-center gap-2 min-w-0">
           <button
@@ -441,7 +441,7 @@ export default function Editor() {
               toast.success("Saved! ✅");
               navigate("/dashboard");
             }}
-            className="flex-shrink-0 bg-gray-800 border border-gray-700 hover:bg-gray-700 hover:border-green-500 transition-all text-sm w-9 h-9 rounded-xl font-medium flex items-center justify-center"
+            className="shrink-0 bg-gray-800 border border-gray-700 hover:bg-gray-700 hover:border-green-500 transition-all text-sm w-9 h-9 rounded-xl font-medium flex items-center justify-center"
             title="Back to dashboard"
           >
             ⚡
@@ -457,12 +457,12 @@ export default function Editor() {
                 saveSession();
               }}
               onKeyDown={(e) => e.key === "Enter" && setIsEditingTitle(false)}
-              className="bg-gray-700 text-white px-2 py-1 rounded text-sm outline-none focus:ring-2 focus:ring-green-500 max-w-[140px] sm:max-w-xs"
+              className="bg-gray-700 text-white px-2 py-1 rounded text-sm outline-none focus:ring-2 focus:ring-green-500 max-w-35 sm:max-w-xs"
             />
           ) : (
             <span
               onClick={() => setIsEditingTitle(true)}
-              className="text-sm text-gray-300 cursor-pointer hover:text-white truncate max-w-[120px] sm:max-w-xs"
+              className="text-sm text-gray-300 cursor-pointer hover:text-white truncate max-w-30 sm:max-w-xs"
               title="Click to rename"
             >
               {title} ✏️
@@ -482,7 +482,7 @@ export default function Editor() {
               setCode(savedCode);
               setLanguage(newLang);
             }}
-            className="bg-gray-700 text-white text-xs px-2 py-1.5 rounded-lg outline-none max-w-[110px]"
+            className="bg-gray-700 text-white text-xs px-2 py-1.5 rounded-lg outline-none max-w-27.5"
           >
             {LANGUAGES.map((l) => (
               <option key={l} value={l}>
@@ -579,7 +579,7 @@ export default function Editor() {
 
       {/* ── COMPLEXITY BAR ── */}
       {complexity && (
-        <div className="flex-shrink-0 flex flex-wrap items-center gap-3 px-4 py-2.5 bg-gray-900 border-b border-purple-800 text-sm">
+        <div className="shrink-0 flex flex-wrap items-center gap-3 px-4 py-2.5 bg-gray-900 border-b border-purple-800 text-sm">
           <span className="text-gray-400 font-semibold">⏱ Time:</span>
           <span
             className={`font-mono font-bold ${COMPLEXITY_COLOR[complexity.time] ?? "text-white"}`}
@@ -594,12 +594,12 @@ export default function Editor() {
             {complexity.space}
           </span>
           <span className="text-gray-600 hidden sm:inline">|</span>
-          <span className="text-gray-400 italic text-xs sm:text-sm break-words flex-1 min-w-0">
+          <span className="text-gray-400 italic text-xs sm:text-sm wrap-break-word flex-1 min-w-0">
             {complexity.reason}
           </span>
           <button
             onClick={() => setComplexity(null)}
-            className="ml-auto flex-shrink-0 text-gray-500 hover:text-white text-base"
+            className="ml-auto shrink-0 text-gray-500 hover:text-white text-base"
           >
             ✕
           </button>
@@ -608,7 +608,7 @@ export default function Editor() {
 
       {/* ── MOBILE PANEL TABS (only when output exists) ── */}
       {output && (
-        <div className="flex-shrink-0 flex border-b border-gray-800 bg-gray-900 md:hidden">
+        <div className="shrink-0 flex border-b border-gray-800 bg-gray-900 md:hidden">
           {["editor", "input", "output"].map((panel) => (
             <button
               key={panel}
@@ -637,7 +637,7 @@ export default function Editor() {
             min-h-0 min-w-0 overflow-hidden
             ${output ? "hidden md:flex md:flex-1" : "flex flex-1"}
             ${output ? "md:w-1/2 lg:w-[55%]" : ""}
-            ${output && mobilePanel === "editor" ? "!flex flex-1 md:flex" : ""}
+            ${output && mobilePanel === "editor" ? "flex! flex-1 md:flex" : ""}
           `}
           style={output ? {} : {}}
         >
@@ -676,7 +676,7 @@ export default function Editor() {
                 ${mobilePanel === "input" ? "flex" : "hidden md:flex"}
               `}
             >
-              <div className="flex-shrink-0 px-4 py-2.5 bg-gray-900 border-b border-gray-800 text-xs font-semibold text-gray-300 tracking-wide">
+              <div className="shrink-0 px-4 py-2.5 bg-gray-900 border-b border-gray-800 text-xs font-semibold text-gray-300 tracking-wide">
                 📥 Custom Input
               </div>
               <textarea
@@ -696,7 +696,7 @@ export default function Editor() {
                 ${mobilePanel === "output" ? "flex" : "hidden md:flex"}
               `}
             >
-              <div className="flex-shrink-0 flex justify-between items-center px-4 py-2.5 bg-gray-900 border-b border-gray-800 text-xs font-semibold">
+              <div className="shrink-0 flex justify-between items-center px-4 py-2.5 bg-gray-900 border-b border-gray-800 text-xs font-semibold">
                 <span
                   className={
                     output.status === "error"
@@ -722,7 +722,7 @@ export default function Editor() {
                   ✕
                 </button>
               </div>
-              <pre className="flex-1 overflow-auto p-4 text-xs sm:text-sm text-gray-200 font-mono leading-relaxed whitespace-pre-wrap break-words">
+              <pre className="flex-1 overflow-auto p-4 text-xs sm:text-sm text-gray-200 font-mono leading-relaxed whitespace-pre-wrap wrap-break-word">
                 {output.text}
               </pre>
             </div>
