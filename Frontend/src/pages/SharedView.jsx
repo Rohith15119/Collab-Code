@@ -37,8 +37,8 @@ export default function SharedView() {
       setLoading(true);
       try {
         const [recRes, sentRes] = await Promise.all([
-          api.get("/session/shared/received"),
-          api.get("/session/shared/sent"),
+          api.get("/sharing/shared/received"),
+          api.get("/sharing/shared/sent"),
         ]);
         if (!mounted) return;
         setReceived(recRes.data.sessions ?? []);
@@ -58,7 +58,7 @@ export default function SharedView() {
 
   const handleRevoke = async (roomId, email) => {
     try {
-      await api.delete(`/session/${roomId}/share`, { data: { email } });
+      await api.delete(`/sharing/${roomId}/share`, { data: { email } });
       setSent((prev) =>
         prev
           .map((s) =>
@@ -285,7 +285,7 @@ function ShareModal({ session, onClose, onShared }) {
     }
     setSharing(true);
     try {
-      await api.post(`/session/${session.roomId}/share`, {
+      await api.post(`/sharing/${session.roomId}/share`, {
         email: email.trim(),
       });
       toast.success(`Session shared with ${email}`);
@@ -315,7 +315,7 @@ function ShareModal({ session, onClose, onShared }) {
         <div className="flex items-start justify-between">
           <div>
             <h3 className="text-base font-bold text-white">Share Session</h3>
-            <p className="text-xs text-gray-500 mt-0.5 truncate max-w-65">
+            <p className="text-xs text-gray-500 mt-0.5 truncate max-w-[260px]">
               {session.title}
             </p>
           </div>
