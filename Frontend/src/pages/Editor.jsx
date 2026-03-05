@@ -456,10 +456,8 @@ export default function Editor() {
       return;
     }
 
-    // 🔥 Create unique cache key including input
     const cacheKey = `${language}__${btoa(code)}__${btoa(userInput || "")}`;
 
-    // 🔥 Load cache from localStorage
     const storedCache = JSON.parse(localStorage.getItem("runCache") || "{}");
 
     if (storedCache[cacheKey]) {
@@ -508,10 +506,8 @@ export default function Editor() {
 
       setOutput(finalOutput);
 
-      // 🔥 Save into cache
       storedCache[cacheKey] = finalOutput;
 
-      // Optional: Limit cache size (avoid huge storage)
       const keys = Object.keys(storedCache);
       if (keys.length > 50) {
         delete storedCache[keys[0]]; // remove oldest
@@ -573,9 +569,10 @@ export default function Editor() {
   }, [saveSession, handleRun, handleCopy, handleDownload, output, navigate]);
 
   return (
-    <div className="flex flex-col h-screen bg-linear-to-br from-gray-950 via-gray-900 to-black text-gray-200">
+    <div className="flex flex-col min-h-screen w-full overflow-x-hidden bg-gradient-to-br from-gray-950 via-gray-900 to-black text-gray-200">
+      {" "}
       {/* Topbar */}
-      <div className="flex items-center justify-between px-8 py-4 bg-gray-900/90 backdrop-blur-xl border-b border-gray-800 shadow-xl rounded-b-2xl">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-3 md:px-6 py-3 bg-gray-900/90 backdrop-blur-xl border-b border-gray-800 shadow-xl">
         {" "}
         {/* Left */}
         <div className="flex items-center gap-3">
@@ -684,7 +681,6 @@ export default function Editor() {
           </button>
         </div>
       </div>
-
       {/* Complexity Bar */}
       {complexity && (
         <div className="flex items-center gap-8 px-10 py-5 bg-gray-900/95 border-b border-purple-700 shadow-lg rounded-b-2xl text-base">
@@ -720,7 +716,6 @@ export default function Editor() {
           </button>
         </div>
       )}
-
       {/* Editor + Output */}
       <div className="flex flex-1 overflow-hidden bg-black min-w-0">
         {/* Editor */}
