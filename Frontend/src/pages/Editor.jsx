@@ -569,7 +569,7 @@ export default function Editor() {
   }, [saveSession, handleRun, handleCopy, handleDownload, output, navigate]);
 
   return (
-    <div className="flex flex-col min-h-screen w-full overflow-x-hidden bg-gradient-to-br from-gray-950 via-gray-900 to-black text-gray-200">
+    <div className="flex flex-col min-h-screen w-full overflow-x-hidden bg-linear-to-br from-gray-950 via-gray-900 to-black text-gray-200">
       {" "}
       {/* Topbar */}
       <div className="flex flex-wrap items-center justify-between gap-2 px-3 md:px-6 py-3 bg-gray-900/90 backdrop-blur-xl border-b border-gray-800 shadow-xl">
