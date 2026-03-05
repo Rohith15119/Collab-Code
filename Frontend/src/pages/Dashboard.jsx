@@ -7,6 +7,36 @@ import toast from "react-hot-toast";
 import Navbar from "../components/Navbar";
 import SessionCard from "../components/SessionCard";
 
+// ── Standard keyframe animations (no plugin needed) ──────────────────────────
+const style = document.createElement("style");
+style.textContent = `
+  @keyframes fadeSlideDown {
+    from { opacity: 0; transform: translateY(-12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeSlideUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  .anim-fade-down {
+    animation: fadeSlideDown 0.45s ease both;
+  }
+  .anim-fade-up {
+    animation: fadeSlideUp 0.35s ease both;
+  }
+  .anim-fade {
+    animation: fadeIn 0.45s ease both;
+  }
+`;
+if (!document.head.querySelector("[data-dashboard-anim]")) {
+  style.setAttribute("data-dashboard-anim", "true");
+  document.head.appendChild(style);
+}
+
 export default function Dashboard() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -83,12 +113,14 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gray-950 text-white flex flex-col">
-      {/* Navbar — uses our Navbar component */}
       <Navbar user={user} onSignOut={logout} />
 
       <main className="flex-1 max-w-5xl mx-auto w-full px-6 py-10">
         {/* ── Header ─────────────────────────────────────── */}
-        <div className="flex justify-between items-start mb-10 animate-in fade-in slide-in-from-top-4 duration-500">
+        <div
+          className="anim-fade-down flex justify-between items-start mb-10"
+          style={{ animationDelay: "0ms" }}
+        >
           <div>
             <h2 className="text-2xl font-bold tracking-tight">My Sessions</h2>
             <p className="text-gray-500 text-sm mt-1">
@@ -127,7 +159,10 @@ export default function Dashboard() {
         </div>
 
         {/* ── Search + Sort ──────────────────────────────── */}
-        <div className="flex gap-3 mb-8 animate-in fade-in slide-in-from-top-4 duration-500 delay-100">
+        <div
+          className="anim-fade-down flex gap-3 mb-8"
+          style={{ animationDelay: "80ms" }}
+        >
           {/* Search */}
           <div className="relative flex-1">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">
@@ -181,10 +216,9 @@ export default function Dashboard() {
             {filtered.map((session, i) => (
               <div
                 key={session._id}
-                className="animate-in fade-in slide-in-from-bottom-4 duration-300"
+                className="anim-fade-up"
                 style={{ animationDelay: `${i * 60}ms` }}
               >
-                {/* Uses our SessionCard component */}
                 <SessionCard
                   id={session.roomId}
                   title={session.title}
@@ -204,7 +238,7 @@ export default function Dashboard() {
   );
 }
 
-// Sub Components
+// ── Sub Components ────────────────────────────────────────────────────────────
 
 function LoadingSkeleton() {
   return (
@@ -226,7 +260,7 @@ function LoadingSkeleton() {
 
 function EmptyState({ hasSearch, onCreate }) {
   return (
-    <div className="flex flex-col items-center justify-center py-28 animate-in fade-in duration-500">
+    <div className="anim-fade flex flex-col items-center justify-center py-28">
       <div className="text-5xl mb-4 opacity-30">{hasSearch ? "🔍" : "⚡"}</div>
       <p className="text-gray-500 text-lg font-medium">
         {hasSearch ? "No sessions match your search" : "No sessions yet"}
