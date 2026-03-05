@@ -151,7 +151,7 @@ function ShareModal({ roomId, title, onClose }) {
         <div className="flex items-start justify-between">
           <div>
             <h3 className="text-base font-bold text-white">Share Session</h3>
-            <p className="text-xs text-gray-500 mt-0.5 truncate max-w-[280px]">
+            <p className="text-xs text-gray-500 mt-0.5 truncate max-w-70">
               {title}
             </p>
           </div>
