@@ -130,7 +130,7 @@ app.use("/api/session", sessionRoutes);
 app.use("/api/auth", protectedRoutes);
 app.use("/api/profile", ProfileRoutes);
 app.use("/api", analyzeRouter);
-app.use("/session", require("./routes/sharedView"));
+app.use("/api/sharing", require("./routes/sharedView"));
 
 app.use((err, req, res, next) => {
   console.error(err.stack);
