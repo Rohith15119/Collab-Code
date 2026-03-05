@@ -39,7 +39,7 @@ const sessionSchema = new mongoose.Schema(
     },
 
     ownerId: {
-      type: String, // PostgreSQL UUID stored as string here
+      type: String, // PostgreSQL UUID stored as string
       required: true,
     },
 
@@ -47,10 +47,18 @@ const sessionSchema = new mongoose.Schema(
       type: Number,
       default: 18,
     },
+
+    sharedWith: {
+      type: [String],
+      default: [],
+    },
   },
   {
     timestamps: true,
   },
 );
+
+// Index for fast lookup of sessions shared with a user
+sessionSchema.index({ sharedWith: 1 });
 
 module.exports = mongoose.model("Session", sessionSchema);
