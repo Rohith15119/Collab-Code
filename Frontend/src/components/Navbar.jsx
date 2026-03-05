@@ -61,7 +61,7 @@ export default function Navbar({ user, onSignOut }) {
         {/* Desktop: user + sign out */}
         <div className="hidden md:flex items-center gap-3 shrink-0">
           {user && (
-            <span className="text-xs text-gray-500 truncate max-w-[160px]">
+            <span className="text-xs text-gray-500 truncate max-w-40">
               {user.email}
             </span>
           )}
@@ -76,17 +76,17 @@ export default function Navbar({ user, onSignOut }) {
         {/* Mobile: hamburger */}
         <button
           onClick={() => setMenuOpen((v) => !v)}
-          className="md:hidden flex flex-col justify-center gap-[5px] w-8 h-8 shrink-0"
+          className="md:hidden flex flex-col justify-center gap-1.25 w-8 h-8 shrink-0"
           aria-label="Toggle menu"
         >
           <span
-            className={`block w-5 h-0.5 bg-white transition-all duration-200 origin-center ${menuOpen ? "rotate-45 translate-y-[7px]" : ""}`}
+            className={`block w-5 h-0.5 bg-white transition-all duration-200 origin-center ${menuOpen ? "rotate-45 translate-y-1.75" : ""}`}
           />
           <span
             className={`block w-5 h-0.5 bg-white transition-all duration-200 ${menuOpen ? "opacity-0" : ""}`}
           />
           <span
-            className={`block w-5 h-0.5 bg-white transition-all duration-200 origin-center ${menuOpen ? "-rotate-45 -translate-y-[7px]" : ""}`}
+            className={`block w-5 h-0.5 bg-white transition-all duration-200 origin-center ${menuOpen ? "-rotate-45 -translate-y-1.75" : ""}`}
           />
         </button>
       </div>
