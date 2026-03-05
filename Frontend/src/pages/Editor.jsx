@@ -102,12 +102,12 @@ export const loadTheme = async (monacoInstance, themeName) => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       themeCache[themeName] = await res.json();
     }
-    const themeData = themeCache[themeName];
+    const d = themeCache[themeName];
     monacoInstance.editor.defineTheme(themeName, {
-      base: themeData.base || "vs-dark",
+      base: d.base || "vs-dark",
       inherit: true,
-      rules: themeData.rules || [],
-      colors: themeData.colors || {},
+      rules: d.rules || [],
+      colors: d.colors || {},
     });
     monacoInstance.editor.setTheme(themeName);
   } catch {
@@ -125,10 +125,51 @@ const COMPLEXITY_COLOR = {
   "O(n!)": "text-pink-600",
 };
 
+// Returns "mobile" | "tablet" | "desktop" based on window width
+function useBreakpoint() {
+  const get = () => {
+    const w = window.innerWidth;
+    if (w < 768) return "mobile";
+    if (w < 1200) return "tablet";
+    return "desktop";
+  };
+  const [bp, setBp] = useState(get);
+  useEffect(() => {
+    const h = () => setBp(get());
+    window.addEventListener("resize", h);
+    return () => window.removeEventListener("resize", h);
+  }, []);
+  return bp;
+}
+
+// A compact, consistent action button
+function Btn({ onClick, disabled, title, color, children }) {
+  const colors = {
+    gray: "bg-gray-800 border border-gray-700 hover:bg-gray-700 hover:border-gray-500",
+    purple: "bg-purple-900 border border-purple-700 hover:bg-purple-800",
+    blue: "bg-blue-900 border border-blue-700 hover:bg-blue-800",
+    green: "bg-green-800 border border-green-700 hover:bg-green-700",
+  };
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      className={`flex items-center justify-center gap-1 text-xs h-8 px-2.5 rounded-lg font-medium transition-all shrink-0 disabled:opacity-40 disabled:cursor-not-allowed ${colors[color] || colors.gray}`}
+    >
+      {children}
+    </button>
+  );
+}
+
 export default function Editor() {
   const monaco = useMonaco();
   const { roomId } = useParams();
   const navigate = useNavigate();
+  const bp = useBreakpoint();
+  const isMobile = bp === "mobile";
+  const isTablet = bp === "tablet";
+  const isDesktop = bp === "desktop";
 
   const [code, setCode] = useState(LANGUAGE_TEMPLATES["javascript"]);
   const [language, setLanguage] = useState("javascript");
@@ -148,13 +189,18 @@ export default function Editor() {
   const [fontFamily, setFontFamily] = useState("Fira Code");
   const [complexity, setComplexity] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  // Mobile: which panel is active — "editor" | "input" | "output"
   const [mobilePanel, setMobilePanel] = useState("editor");
+  // Resizable side panel width (%) — desktop only
+  const [sideWidth, setSideWidth] = useState(38);
 
   const lastAnalyzedRef = useRef({ code: null, language: null, result: null });
   const isPrefsLoaded = useRef(false);
   const autoSaveTimer = useRef(null);
   const themeRef = useRef(theme);
+  const containerRef = useRef(null);
+  const isDragging = useRef(false);
+  const dragStartX = useRef(0);
+  const dragStartSide = useRef(0);
 
   const analyzeComplexity = useCallback(async () => {
     const cached = lastAnalyzedRef.current;
@@ -266,10 +312,10 @@ export default function Editor() {
     [code, language, title, roomId],
   );
 
-  const handleCodeChange = (value) => {
-    setCode(value);
+  const handleCodeChange = (val) => {
+    setCode(val);
     clearTimeout(autoSaveTimer.current);
-    autoSaveTimer.current = setTimeout(() => saveSession(value), 2000);
+    autoSaveTimer.current = setTimeout(() => saveSession(val), 2000);
   };
 
   const handleCopy = useCallback(() => {
@@ -299,9 +345,7 @@ export default function Editor() {
   const handleRun = useCallback(async () => {
     setIsRunning(true);
     setOutput({ status: "running", text: "Running..." });
-    // Switch to output panel on mobile when run is triggered
     setMobilePanel("output");
-
     const langMap = {
       javascript: 102,
       typescript: 101,
@@ -383,7 +427,7 @@ export default function Editor() {
   }, [code, language, userInput]);
 
   useEffect(() => {
-    const handleKeyDown = (e) => {
+    const h = (e) => {
       const isCtrl = e.ctrlKey || e.metaKey;
       if (isCtrl && e.key.toLowerCase() === "s") {
         e.preventDefault();
@@ -422,31 +466,96 @@ export default function Editor() {
         setFontSize((p) => Math.max(p - 2, 10));
       }
     };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
   }, [saveSession, handleRun, handleCopy, handleDownload, output, navigate]);
+
+  // ── Drag-to-resize divider ──
+  const startDrag = useCallback(
+    (e) => {
+      e.preventDefault();
+      isDragging.current = true;
+      dragStartX.current = e.clientX;
+      dragStartSide.current = sideWidth;
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+    },
+    [sideWidth],
+  );
+
+  useEffect(() => {
+    const onMove = (e) => {
+      if (!isDragging.current || !containerRef.current) return;
+      const total = containerRef.current.offsetWidth;
+      const delta = e.clientX - dragStartX.current;
+      const deltaPct = (delta / total) * 100;
+      setSideWidth(
+        Math.max(20, Math.min(65, dragStartSide.current - deltaPct)),
+      );
+    };
+    const onUp = () => {
+      isDragging.current = false;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, []);
+
+  // Monaco options tuned per device
+  const monacoOptions = {
+    fontSize: isDesktop ? fontSize : Math.max(12, fontSize - 1),
+    tabSize,
+    minimap: { enabled: isDesktop && minimap },
+    scrollBeyondLastLine: false,
+    automaticLayout: true,
+    wordWrap: wordWrap ? "on" : "off",
+    fontFamily,
+    fontLigatures: ligatures,
+    lineNumbers: "on",
+    renderLineHighlight: isDesktop ? "all" : "line",
+    smoothScrolling: true,
+    cursorBlinking: "smooth",
+    cursorSmoothCaretAnimation: "on",
+    padding: { top: isDesktop ? 14 : 8, bottom: isDesktop ? 14 : 8 },
+    folding: isDesktop,
+    lineDecorationsWidth: isDesktop ? 10 : 4,
+    lineNumbersMinChars: isDesktop ? 4 : 3,
+  };
 
   return (
     <div
+      ref={containerRef}
       className="flex flex-col bg-gray-950 text-gray-200"
       style={{ height: "100dvh", width: "100vw", overflow: "hidden" }}
     >
-      {/* ── TOP BAR ── */}
-      <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 px-3 py-2 bg-gray-900 border-b border-gray-800">
-        {/* Left: back + title */}
-        <div className="flex items-center gap-2 min-w-0">
-          <button
-            onClick={async () => {
-              await saveSession();
-              toast.success("Saved! ✅");
-              navigate("/dashboard");
-            }}
-            className="shrink-0 bg-gray-800 border border-gray-700 hover:bg-gray-700 hover:border-green-500 transition-all text-sm w-9 h-9 rounded-xl font-medium flex items-center justify-center"
-            title="Back to dashboard"
-          >
-            ⚡
-          </button>
+      {/* ══════════════════════════════ TOP BAR ══════════════════════════════ */}
+      <div
+        className="shrink-0 flex items-center gap-2 px-3 bg-gray-900 border-b border-gray-800"
+        style={{ height: isMobile ? 46 : 50 }}
+      >
+        {/* ── Back button ── */}
+        <button
+          onClick={async () => {
+            await saveSession();
+            toast.success("Saved! ✅");
+            navigate("/dashboard");
+          }}
+          className="shrink-0 w-8 h-8 flex items-center justify-center bg-gray-800 border border-gray-700 hover:bg-gray-700 hover:border-green-500 rounded-lg transition-all"
+          title="Dashboard"
+        >
+          ⚡
+        </button>
 
+        {/* ── Title ── */}
+        <div
+          className="shrink-0 overflow-hidden"
+          style={{ maxWidth: isMobile ? 88 : isTablet ? 150 : 200 }}
+        >
           {isEditingTitle ? (
             <input
               autoFocus
@@ -457,43 +566,48 @@ export default function Editor() {
                 saveSession();
               }}
               onKeyDown={(e) => e.key === "Enter" && setIsEditingTitle(false)}
-              className="bg-gray-700 text-white px-2 py-1 rounded text-sm outline-none focus:ring-2 focus:ring-green-500 max-w-35 sm:max-w-xs"
+              className="bg-gray-700 text-white px-2 py-1 rounded text-xs outline-none focus:ring-2 focus:ring-green-500 w-full"
             />
           ) : (
             <span
               onClick={() => setIsEditingTitle(true)}
-              className="text-sm text-gray-300 cursor-pointer hover:text-white truncate max-w-30 sm:max-w-xs"
-              title="Click to rename"
+              className="text-xs text-gray-400 cursor-pointer hover:text-white truncate block"
+              title={title}
             >
               {title} ✏️
             </span>
           )}
         </div>
 
-        {/* Center: language + font size */}
-        <div className="flex items-center gap-1.5">
-          <select
-            value={language}
-            onChange={(e) => {
-              const newLang = e.target.value;
-              const savedCode =
-                codeByLanguage[newLang] || LANGUAGE_TEMPLATES[newLang];
-              setCodeByLanguage((prev) => ({ ...prev, [language]: code }));
-              setCode(savedCode);
-              setLanguage(newLang);
-            }}
-            className="bg-gray-700 text-white text-xs px-2 py-1.5 rounded-lg outline-none max-w-27.5"
-          >
-            {LANGUAGES.map((l) => (
-              <option key={l} value={l}>
-                {l}
-              </option>
-            ))}
-          </select>
+        <div className="shrink-0 h-4 w-px bg-gray-700" />
+
+        {/* ── Language ── */}
+        <select
+          value={language}
+          onChange={(e) => {
+            const newLang = e.target.value;
+            const savedCode =
+              codeByLanguage[newLang] || LANGUAGE_TEMPLATES[newLang];
+            setCodeByLanguage((prev) => ({ ...prev, [language]: code }));
+            setCode(savedCode);
+            setLanguage(newLang);
+          }}
+          className="shrink-0 bg-gray-800 text-white text-xs px-2 py-1.5 rounded-lg outline-none border border-gray-700 hover:border-gray-500 transition-colors"
+          style={{ maxWidth: isMobile ? 86 : 114 }}
+        >
+          {LANGUAGES.map((l) => (
+            <option key={l} value={l}>
+              {l}
+            </option>
+          ))}
+        </select>
+
+        {/* ── Font size (tablet+) ── */}
+        {!isMobile && (
           <select
             value={fontSize}
             onChange={(e) => setFontSize(Number(e.target.value))}
-            className="bg-gray-700 text-white text-xs px-2 py-1.5 rounded-lg outline-none w-16"
+            className="shrink-0 bg-gray-800 text-white text-xs px-2 py-1.5 rounded-lg outline-none border border-gray-700 hover:border-gray-500 transition-colors w-16"
           >
             {FONT_SIZES.map((s) => (
               <option key={s} value={s}>
@@ -501,202 +615,236 @@ export default function Editor() {
               </option>
             ))}
           </select>
-        </div>
+        )}
 
-        {/* Right: action buttons */}
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {/* Copy — icon only on very small screens */}
-          <button
-            onClick={handleCopy}
-            className="bg-gray-800 border border-gray-700 hover:bg-gray-700 hover:border-green-500 text-xs px-3 py-1.5 rounded-xl font-medium transition-all hidden sm:flex items-center gap-1"
-          >
-            📋 <span className="hidden md:inline">Copy</span>
-          </button>
-          <button
-            onClick={handleCopy}
-            className="bg-gray-800 border border-gray-700 hover:bg-gray-700 text-sm w-8 h-8 rounded-xl flex items-center justify-center sm:hidden"
-          >
-            📋
-          </button>
+        {/* ── Spacer ── */}
+        <div className="flex-1 min-w-0" />
 
-          <button
-            onClick={handleDownload}
-            className="bg-gray-800 border border-gray-700 hover:bg-gray-700 hover:border-green-500 text-xs px-3 py-1.5 rounded-xl font-medium transition-all hidden sm:flex items-center gap-1"
-          >
-            ⬇️ <span className="hidden md:inline">Download</span>
-          </button>
-          <button
-            onClick={handleDownload}
-            className="bg-gray-800 border border-gray-700 hover:bg-gray-700 text-sm w-8 h-8 rounded-xl flex items-center justify-center sm:hidden"
-          >
-            ⬇️
-          </button>
-
-          <button
+        {/* ── Action buttons ── */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <Btn onClick={handleCopy} title="Copy  Ctrl+Shift+C" color="gray">
+            📋{isDesktop && <span>Copy</span>}
+          </Btn>
+          <Btn onClick={handleDownload} title="Download  Ctrl+D" color="gray">
+            ⬇️{isDesktop && <span>Download</span>}
+          </Btn>
+          <Btn
             onClick={analyzeComplexity}
             disabled={isAnalyzing}
-            className="bg-purple-700 hover:bg-purple-600 disabled:opacity-50 text-xs px-3 py-1.5 rounded-xl font-medium transition hidden sm:flex items-center gap-1"
+            title="Complexity analysis"
+            color="purple"
           >
-            📊{" "}
-            <span className="hidden lg:inline">
-              {isAnalyzing ? "Analyzing…" : "Complexity"}
-            </span>
-          </button>
-          <button
-            onClick={analyzeComplexity}
-            disabled={isAnalyzing}
-            className="bg-purple-700 hover:bg-purple-600 disabled:opacity-50 text-sm w-8 h-8 rounded-xl flex items-center justify-center sm:hidden"
-          >
-            📊
-          </button>
-
-          <button
+            📊{!isMobile && <span>{isAnalyzing ? "…" : "Complexity"}</span>}
+          </Btn>
+          <Btn
             onClick={async () => {
               await saveSession();
               toast.success("Saved! ✅");
             }}
             disabled={isSaving}
-            className="bg-blue-700 hover:bg-blue-600 disabled:opacity-50 text-xs px-3 py-1.5 rounded-xl font-medium transition flex items-center gap-1"
+            title="Save  Ctrl+S"
+            color="blue"
           >
-            💾{" "}
-            <span className="hidden sm:inline">
+            💾
+            <span className={isMobile ? "sr-only" : ""}>
               {isSaving ? "Saving…" : "Save"}
             </span>
-          </button>
-
-          <button
+          </Btn>
+          <Btn
             onClick={handleRun}
             disabled={isRunning}
-            className="bg-green-700 hover:bg-green-600 disabled:opacity-50 text-xs px-3 py-1.5 rounded-xl font-medium transition flex items-center gap-1"
+            title="Run  Ctrl+Enter"
+            color="green"
           >
-            {isRunning ? "⏳" : "▶"}{" "}
-            <span className="hidden sm:inline">
+            {isRunning ? "⏳" : "▶"}
+            <span className={isMobile ? "sr-only" : ""}>
               {isRunning ? "Running…" : "Run"}
             </span>
-          </button>
+          </Btn>
         </div>
       </div>
 
-      {/* ── COMPLEXITY BAR ── */}
+      {/* ══════════════════════════════ COMPLEXITY BAR ══════════════════════════════ */}
       {complexity && (
-        <div className="shrink-0 flex flex-wrap items-center gap-3 px-4 py-2.5 bg-gray-900 border-b border-purple-800 text-sm">
-          <span className="text-gray-400 font-semibold">⏱ Time:</span>
+        <div className="shrink-0 flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 bg-gray-900 border-b border-purple-900/60 text-xs">
+          <span className="text-gray-500 font-semibold">⏱ Time:</span>
           <span
             className={`font-mono font-bold ${COMPLEXITY_COLOR[complexity.time] ?? "text-white"}`}
           >
             {complexity.time}
           </span>
-          <span className="text-gray-600">|</span>
-          <span className="text-gray-400 font-semibold">🧠 Space:</span>
+          <span className="text-gray-700">│</span>
+          <span className="text-gray-500 font-semibold">🧠 Space:</span>
           <span
             className={`font-mono font-bold ${COMPLEXITY_COLOR[complexity.space] ?? "text-white"}`}
           >
             {complexity.space}
           </span>
-          <span className="text-gray-600 hidden sm:inline">|</span>
-          <span className="text-gray-400 italic text-xs sm:text-sm wrap-break-word flex-1 min-w-0">
+          {!isMobile && <span className="text-gray-700">│</span>}
+          <span className="text-gray-400 italic flex-1 min-w-0 wrap-break-word">
             {complexity.reason}
           </span>
           <button
             onClick={() => setComplexity(null)}
-            className="ml-auto shrink-0 text-gray-500 hover:text-white text-base"
+            className="shrink-0 ml-auto text-gray-600 hover:text-white"
           >
             ✕
           </button>
         </div>
       )}
 
-      {/* ── MOBILE PANEL TABS (only when output exists) ── */}
-      {output && (
-        <div className="shrink-0 flex border-b border-gray-800 bg-gray-900 md:hidden">
-          {["editor", "input", "output"].map((panel) => (
+      {/* ══════════════════════════════ MOBILE PANEL TABS ══════════════════════════════ */}
+      {output && isMobile && (
+        <div className="shrink-0 flex bg-gray-900 border-b border-gray-800">
+          {[
+            { id: "editor", label: "📝 Code" },
+            { id: "input", label: "📥 Input" },
+            { id: "output", label: "📤 Output" },
+          ].map(({ id, label }) => (
             <button
-              key={panel}
-              onClick={() => setMobilePanel(panel)}
-              className={`flex-1 py-2 text-xs font-medium capitalize transition-all border-b-2 ${
-                mobilePanel === panel
-                  ? "border-green-500 text-green-400"
+              key={id}
+              onClick={() => setMobilePanel(id)}
+              className={`flex-1 py-2 text-xs font-medium transition-all border-b-2 ${
+                mobilePanel === id
+                  ? "border-green-500 text-green-400 bg-gray-800/40"
                   : "border-transparent text-gray-500 hover:text-gray-300"
               }`}
             >
-              {panel === "editor"
-                ? "📝 Editor"
-                : panel === "input"
-                  ? "📥 Input"
-                  : "📤 Output"}
+              {label}
             </button>
           ))}
         </div>
       )}
 
-      {/* ── MAIN CONTENT ── */}
+      {/* ══════════════════════════════ MAIN CONTENT AREA ══════════════════════════════ */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
-        {/* ── DESKTOP: Editor ── */}
+        {/* ── EDITOR ── */}
         <div
-          className={`
-            min-h-0 min-w-0 overflow-hidden
-            ${output ? "hidden md:flex md:flex-1" : "flex flex-1"}
-            ${output ? "md:w-1/2 lg:w-[55%]" : ""}
-            ${output && mobilePanel === "editor" ? "flex! flex-1 md:flex" : ""}
-          `}
-          style={output ? {} : {}}
+          className="min-h-0 min-w-0 overflow-hidden"
+          style={
+            isMobile
+              ? // Mobile: full width, hidden when showing other panel
+                {
+                  display: output && mobilePanel !== "editor" ? "none" : "flex",
+                  flex: 1,
+                  flexDirection: "column",
+                }
+              : // Tablet / Desktop with output: fixed % width
+                output
+                ? {
+                    width: `${100 - sideWidth}%`,
+                    flexShrink: 0,
+                    display: "flex",
+                    flexDirection: "column",
+                  }
+                : // Desktop no output: fill all
+                  { flex: 1, display: "flex", flexDirection: "column" }
+          }
         >
-          <div className="w-full h-full">
-            <MonacoEditor
-              height="100%"
-              language={language}
-              value={code}
-              onChange={handleCodeChange}
-              onMount={(_editor, monacoInstance) =>
-                loadTheme(monacoInstance, themeRef.current)
-              }
-              options={{
-                fontSize,
-                tabSize,
-                minimap: { enabled: minimap },
-                scrollBeyondLastLine: false,
-                automaticLayout: true,
-                wordWrap: wordWrap ? "on" : "off",
-                fontFamily,
-                fontLigatures: ligatures,
-              }}
-            />
-          </div>
+          <MonacoEditor
+            height="100%"
+            language={language}
+            value={code}
+            onChange={handleCodeChange}
+            onMount={(_ed, m) => loadTheme(m, themeRef.current)}
+            options={monacoOptions}
+          />
         </div>
 
-        {/* ── DESKTOP: Input + Output panels side by side | Mobile: separate tabs ── */}
+        {/* ── DRAG HANDLE (desktop + tablet, only when output open) ── */}
+        {!isMobile && output && (
+          <div
+            onMouseDown={startDrag}
+            className="shrink-0 w-1.5 bg-gray-800 hover:bg-green-600 active:bg-green-500 cursor-col-resize transition-colors z-20 select-none"
+            title="Drag to resize panels"
+          />
+        )}
+
+        {/* ── SIDE PANELS: Input + Output ── */}
         {output && (
-          <>
-            {/* Custom Input */}
+          <div
+            className="min-h-0 overflow-hidden"
+            style={
+              isMobile
+                ? { flex: 1, display: "flex", flexDirection: "column" }
+                : isTablet
+                  ? // Tablet: stacked vertically
+                    {
+                      width: `${sideWidth}%`,
+                      flexShrink: 0,
+                      display: "flex",
+                      flexDirection: "column",
+                    }
+                  : // Desktop: side by side
+                    {
+                      width: `${sideWidth}%`,
+                      flexShrink: 0,
+                      display: "flex",
+                      flexDirection: "row",
+                    }
+            }
+          >
+            {/* Input panel */}
             <div
-              className={`
-                border-gray-800 bg-gray-950 flex flex-col
-                flex-1 min-h-0 min-w-0
-                md:flex md:w-[22%] lg:w-[20%] md:flex-none md:border-l
-                ${mobilePanel === "input" ? "flex" : "hidden md:flex"}
-              `}
+              className="bg-gray-950 flex flex-col border-gray-800"
+              style={
+                isMobile
+                  ? {
+                      display: mobilePanel === "input" ? "flex" : "none",
+                      flex: 1,
+                    }
+                  : isTablet
+                    ? {
+                        height: "35%",
+                        flexShrink: 0,
+                        borderTop: "1px solid #1f2937",
+                        display: "flex",
+                      }
+                    : {
+                        width: "40%",
+                        flexShrink: 0,
+                        borderLeft: "1px solid #1f2937",
+                        display: "flex",
+                      }
+              }
             >
-              <div className="shrink-0 px-4 py-2.5 bg-gray-900 border-b border-gray-800 text-xs font-semibold text-gray-300 tracking-wide">
-                📥 Custom Input
+              <div className="shrink-0 px-3 py-2 bg-gray-900 border-b border-gray-800 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                📥 Stdin / Input
               </div>
               <textarea
                 value={userInput}
                 onChange={(e) => setUserInput(e.target.value)}
-                placeholder="Enter input here..."
-                className="flex-1 bg-gray-950 text-gray-200 p-4 text-sm font-mono outline-none resize-none min-h-0"
+                placeholder="Enter program input here…"
+                className="flex-1 bg-gray-950 text-gray-200 p-3 text-xs font-mono outline-none resize-none min-h-0 placeholder-gray-700"
               />
             </div>
 
-            {/* Output */}
+            {/* Divider between input/output on tablet (stacked) */}
+            {isTablet && <div className="shrink-0 h-px bg-gray-800" />}
+
+            {/* Output panel */}
             <div
-              className={`
-                border-gray-800 bg-gray-950 flex flex-col
-                flex-1 min-h-0 min-w-0
-                md:flex md:w-[28%] lg:w-[25%] md:flex-none md:border-l
-                ${mobilePanel === "output" ? "flex" : "hidden md:flex"}
-              `}
+              className="bg-gray-950 flex flex-col border-gray-800"
+              style={
+                isMobile
+                  ? {
+                      display: mobilePanel === "output" ? "flex" : "none",
+                      flex: 1,
+                    }
+                  : isTablet
+                    ? {
+                        flex: 1,
+                        borderTop: "1px solid #1f2937",
+                        display: "flex",
+                      }
+                    : {
+                        flex: 1,
+                        borderLeft: "1px solid #1f2937",
+                        display: "flex",
+                      }
+              }
             >
-              <div className="shrink-0 flex justify-between items-center px-4 py-2.5 bg-gray-900 border-b border-gray-800 text-xs font-semibold">
+              <div className="shrink-0 flex justify-between items-center px-3 py-2 bg-gray-900 border-b border-gray-800 text-xs font-semibold">
                 <span
                   className={
                     output.status === "error"
@@ -709,7 +857,7 @@ export default function Editor() {
                   {output.status === "error"
                     ? "❌ Error"
                     : output.status === "running"
-                      ? "⏳ Running..."
+                      ? "⏳ Running…"
                       : "✅ Output"}
                 </span>
                 <button
@@ -717,16 +865,17 @@ export default function Editor() {
                     setOutput(null);
                     setMobilePanel("editor");
                   }}
-                  className="text-gray-400 hover:text-white text-base leading-none"
+                  className="text-gray-600 hover:text-white px-1 text-sm leading-none"
+                  title="Close"
                 >
                   ✕
                 </button>
               </div>
-              <pre className="flex-1 overflow-auto p-4 text-xs sm:text-sm text-gray-200 font-mono leading-relaxed whitespace-pre-wrap wrap-break-word">
+              <pre className="flex-1 overflow-auto p-3 text-xs text-gray-200 font-mono leading-relaxed whitespace-pre-wrap wrap-break-word">
                 {output.text}
               </pre>
             </div>
-          </>
+          </div>
         )}
       </div>
     </div>
