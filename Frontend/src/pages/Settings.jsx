@@ -19,25 +19,30 @@ export default function Settings() {
   return (
     <div className="min-h-screen bg-gray-950 text-white flex flex-col">
       <Navbar user={user} onSignOut={logout} />
-      <main className="flex-1 max-w-4xl mx-auto w-full px-6 py-10">
-        <div className="mb-8 animate-in fade-in slide-in-from-top-4 duration-500">
+      <main className="flex-1 max-w-4xl mx-auto w-full px-4 sm:px-6 py-8">
+        <div className="mb-6">
           <h2 className="text-2xl font-bold tracking-tight">Settings</h2>
           <p className="text-gray-500 text-sm mt-1">
             Manage your account and editor preferences
           </p>
         </div>
-        <div className="flex gap-6 animate-in fade-in duration-500">
-          <aside className="w-44 shrink-0">
-            <nav className="flex flex-col gap-1">
+
+        {/* ── Mobile: horizontal tab bar | Desktop: sidebar ── */}
+        <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
+          {/* Tabs */}
+          <aside className="sm:w-44 sm:shrink-0">
+            {/* Mobile: horizontal scrollable pill tabs */}
+            <nav className="flex sm:flex-col gap-1 overflow-x-auto pb-1 sm:pb-0 sm:overflow-visible">
               {TABS.map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-left transition-all duration-150 font-medium ${
-                    activeTab === tab.id
-                      ? "bg-green-500/10 text-green-400 border border-green-500/20"
-                      : "text-gray-500 hover:text-white hover:bg-gray-800"
-                  }`}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm whitespace-nowrap transition-all duration-150 font-medium shrink-0 sm:w-full sm:text-left
+                    ${
+                      activeTab === tab.id
+                        ? "bg-green-500/10 text-green-400 border border-green-500/20"
+                        : "text-gray-500 hover:text-white hover:bg-gray-800 border border-transparent"
+                    }`}
                 >
                   <span>{tab.icon}</span>
                   {tab.label}
@@ -45,6 +50,8 @@ export default function Settings() {
               ))}
             </nav>
           </aside>
+
+          {/* Content — takes full remaining width */}
           <div className="flex-1 min-w-0">
             {activeTab === "profile" && <ProfileTab user={user} />}
             {activeTab === "editor" && <EditorTab />}
@@ -105,7 +112,7 @@ function ProfileTab({ user }) {
       </Field>
       <Field label="Avatar">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-green-500/20 border border-green-500/30 flex items-center justify-center text-2xl font-bold text-green-400">
+          <div className="w-14 h-14 rounded-2xl bg-green-500/20 border border-green-500/30 flex items-center justify-center text-2xl font-bold text-green-400 shrink-0">
             {name?.[0]?.toUpperCase() ?? "?"}
           </div>
           <p className="text-xs text-gray-500">
@@ -411,7 +418,7 @@ function EditorTab() {
   return (
     <Section title="Editor" description="Customize your coding environment.">
       <Field label="Color Theme">
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {THEMES.map((t) => (
             <button
               key={t.value}
@@ -422,7 +429,6 @@ function EditorTab() {
                   : "border-gray-800 bg-gray-900/50 hover:border-gray-600"
               }`}
             >
-              {/* Mini preview */}
               <div
                 className="w-full h-8 rounded-lg overflow-hidden flex border border-black/20"
                 style={{ background: t.bg }}
@@ -457,7 +463,8 @@ function EditorTab() {
         </Select>
       </Field>
 
-      <div className="grid grid-cols-2 gap-4">
+      {/* Stack sliders on mobile */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Field label={`Font Size: ${fontSize}px`}>
           <input
             type="range"
@@ -591,7 +598,7 @@ function AccountTab({ logout, navigate }) {
             placeholder="••••••••"
           />
         </Field>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <SaveButton
             label="Update Password"
             loading={pwSaving}
@@ -611,8 +618,9 @@ function AccountTab({ logout, navigate }) {
         description="Permanent and irreversible actions."
         danger
       >
-        <div className="flex items-start justify-between gap-4">
-          <div>
+        {/* Stack on mobile, row on desktop */}
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+          <div className="min-w-0">
             <p className="text-sm text-white font-medium">Delete Account</p>
             <p className="text-xs text-gray-500 mt-0.5">
               Permanently deletes your account and all sessions. This cannot be
@@ -641,10 +649,12 @@ function AccountTab({ logout, navigate }) {
   );
 }
 
+// ── Shared primitives ─────────────────────────────────────────────────────────
+
 function Section({ title, description, danger = false, children }) {
   return (
     <div
-      className={`rounded-2xl border p-6 flex flex-col gap-5 animate-in fade-in slide-in-from-bottom-2 duration-300 ${
+      className={`rounded-2xl border p-5 sm:p-6 flex flex-col gap-5 ${
         danger
           ? "border-red-500/20 bg-red-500/5"
           : "border-gray-800/60 bg-gray-900/40"
