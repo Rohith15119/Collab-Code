@@ -14,7 +14,10 @@ const limiter = rateLimit({
 
 router.use(limiter);
 
-const redis = new Redis(process.env.REDIS_URL);
+const redis = new Redis(process.env.REDIS_URL, {
+  commandTimeout: 2000,
+  maxRetriesPerRequest: 1,
+});
 
 redis.on("error", (err) => console.error("Redis Error: ", err));
 
@@ -68,27 +71,28 @@ router.get("/my", authenticate, async (req, res) => {
   try {
     res.set("Cache-Control", "private, max-age=15, stale-while-revalidate=30");
 
-    const cached = await getCached(req.user.id);
+    // Grab a limit from the query, default to 50
+    const limit = parseInt(req.query.limit) || 50;
+    const cacheKey = `sessions:${req.user.id}:limit:${limit}`; // Update cache key
+
+    const cached = await getCached(cacheKey); // Use new cache key
     if (cached) {
-      return res.status(200).json({
-        success: true,
-        count: cached.length,
-        sessions: cached,
-      });
+      return res
+        .status(200)
+        .json({ success: true, count: cached.length, sessions: cached });
     }
 
     const sessions = await Session.find({ ownerId: req.user.id })
       .select("title language roomId updatedAt createdAt -_id")
-      .sort({ updatedAt: -1 }) // Sort newest to oldest
-      .lean(); // Skips Mongoose object hydration (Crucial for speed)
+      .sort({ updatedAt: -1 })
+      .limit(limit) // <--- ADD THIS LINE
+      .lean();
 
-    setCache(req.user.id, sessions);
+    setCache(cacheKey, sessions); // Use new cache key
 
-    return res.status(200).json({
-      success: true,
-      count: sessions.length,
-      sessions,
-    });
+    return res
+      .status(200)
+      .json({ success: true, count: sessions.length, sessions });
   } catch (err) {
     console.error("MY SESSIONS ERROR:", err);
     return res.status(500).json({ error: "Internal server error" });
