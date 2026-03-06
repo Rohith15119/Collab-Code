@@ -1,7 +1,6 @@
 const express = require("express");
 const User = require("../models/User");
 const Session = require("../models/Session");
-const rateLimit = require("express-rate-limit");
 const passport = require("../config/passport");
 const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
@@ -15,6 +14,9 @@ const {
   loginValidation,
   validate,
 } = require("../validators/AuthValidator");
+const rateLimit = require("express-rate-limit");
+const { RedisStore } = require("rate-limit-redis");
+const Redis = require("ioredis");
 
 const app = express.Router();
 
