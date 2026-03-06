@@ -43,6 +43,7 @@ export const AuthProvider = ({ children }) => {
       setUser(data.user);
     } catch (err) {
       console.error(err);
+      throw err;
     }
   };
 
@@ -65,6 +66,7 @@ export const AuthProvider = ({ children }) => {
       setUser(data.user);
     } catch (err) {
       console.error(err);
+      throw err;
     }
   };
 
