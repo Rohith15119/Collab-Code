@@ -1,5 +1,6 @@
 const express = require("express");
 const User = require("../models/User");
+const Session = require("../models/Session");
 const rateLimit = require("express-rate-limit");
 const passport = require("../config/passport");
 const crypto = require("crypto");
@@ -249,8 +250,22 @@ app.put("/profile", authenticate, async (req, res) => {
 // Delete account
 app.delete("/delete-account", authenticate, async (req, res) => {
   try {
-    await User.destroy({ where: { id: req.user.id } });
+    const userId = req.user.id;
+
+    // Delete owned sessions
+    await Session.deleteMany({ ownerId: userId });
+
+    // Remove from shared sessions
+    await Session.updateMany(
+      { sharedWith: userId },
+      { $pull: { sharedWith: userId } },
+    );
+
+    // Delete user
+    await User.destroy({ where: { id: userId } });
+
     res.clearCookie("token");
+
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });

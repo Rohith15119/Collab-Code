@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import api from "../api/index";
@@ -7,7 +7,6 @@ import toast from "react-hot-toast";
 import Navbar from "../components/Navbar";
 import SessionCard from "../components/SessionCard";
 
-// ── Standard keyframe animations (no plugin needed) ──────────────────────────
 const style = document.createElement("style");
 style.textContent = `
   @keyframes fadeSlideDown {
@@ -44,45 +43,70 @@ export default function Dashboard() {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState("updatedAt");
+  const [sortBy, setSortBy] = useState("createdAt");
   const [creating, setCreating] = useState(false);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
   useEffect(() => {
-    let isMounted = true;
+    const t = setTimeout(() => setDebouncedSearch(search), 200);
+    return () => clearTimeout(t);
+  }, [search]);
 
-    const load = async () => {
-      try {
-        const { data } = await api.get("/session/my");
-        if (!isMounted) return;
+  const load = useCallback(async () => {
+    try {
+      const { data } = await api.get("/session/my");
+      setSessions(data.sessions || []);
+    } catch {
+      setSessions([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-        if (!data.sessions || data.sessions.length === 0) {
-          setSessions([]);
-          return;
-        }
-
-        setSessions(data.sessions);
-      } catch (err) {
-        if (!isMounted) return;
-        setSessions([]);
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    };
-
+  useEffect(() => {
     load();
+  }, [load]);
+
+  useEffect(() => {
+    window.addEventListener("focus", load);
 
     return () => {
-      isMounted = false;
+      window.removeEventListener("focus", load);
     };
-  }, []);
+  }, [load]);
 
   const createSession = async () => {
     setCreating(true);
+
     try {
+      // find all existing Untitled Session numbers
+      const untitledNumbers = sessions
+        .map((s) => {
+          const match = (s.title || "").match(
+            /^Untitled Session(?: - (\d+))?$/,
+          );
+          return match ? Number(match[1] || 1) : null;
+        })
+        .filter(Boolean);
+
+      // determine next index safely
+      const nextIndex = untitledNumbers.length
+        ? Math.max(...untitledNumbers) + 1
+        : 1;
+
+      const newTitle =
+        nextIndex === 1
+          ? "Untitled Session"
+          : `Untitled Session - ${nextIndex}`;
+
       const { data } = await api.post("/session/create-session", {
-        title: "Untitled Session",
+        title: newTitle,
         language: "javascript",
       });
+
+      // update dashboard instantly
+      setSessions((prev) => [data.session, ...prev]);
+
       navigate(`/editor/${data.session.roomId}`);
     } catch {
       toast.error("Failed to create session");
@@ -102,13 +126,11 @@ export default function Dashboard() {
   };
 
   const filtered = useMemo(() => {
-    return sessions
-      .filter((s) => s.title.toLowerCase().includes(search.toLowerCase()))
-      .sort((a, b) => {
-        const dateA = new Date(a[sortBy] || 0);
-        const dateB = new Date(b[sortBy] || 0);
-        return dateB - dateA;
-      });
+    const term = debouncedSearch.toLowerCase();
+
+    return [...sessions]
+      .filter((s) => (s.title || "").toLowerCase().includes(term))
+      .sort((a, b) => new Date(b[sortBy]) - new Date(a[sortBy]));
   }, [sessions, search, sortBy]);
 
   return (
@@ -215,7 +237,7 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filtered.map((session, i) => (
               <div
-                key={session._id}
+                key={session.roomId}
                 className="anim-fade-up"
                 style={{ animationDelay: `${i * 60}ms` }}
               >
@@ -223,9 +245,7 @@ export default function Dashboard() {
                   id={session.roomId}
                   title={session.title}
                   language={session.language}
-                  updatedAt={new Date(session.updatedAt).toLocaleDateString(
-                    "en-IN",
-                  )}
+                  createdAt={session.createdAt}
                   onClick={() => navigate(`/editor/${session.roomId}`)}
                   onDelete={deleteSession}
                 />

@@ -14,11 +14,11 @@ const LANG_COLORS = {
   default: "text-gray-400 bg-gray-400/10",
 };
 
-export default function SessionCard({
+function SessionCard({
   id,
   title,
   language,
-  updatedAt,
+  createdAt,
   lineCount,
   onClick,
   onDelete,
@@ -53,7 +53,8 @@ export default function SessionCard({
         {/* Meta */}
         <div className="flex items-center gap-3 text-[11px] text-gray-600">
           {lineCount != null && <span>{lineCount} lines</span>}
-          {updatedAt && <span>· {updatedAt}</span>}
+
+          {createdAt && <span>· {new Date(createdAt).toLocaleString()}</span>}
         </div>
 
         {/* Top-right action buttons */}
@@ -239,3 +240,5 @@ function ShareModal({ roomId, title, onClose }) {
     </div>
   );
 }
+
+export default React.memo(SessionCard);
