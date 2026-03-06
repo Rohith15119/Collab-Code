@@ -68,10 +68,12 @@ export default function Dashboard() {
   }, [load]);
 
   useEffect(() => {
-    window.addEventListener("focus", load);
+    const handleFocus = () => load();
+
+    window.addEventListener("focus", handleFocus);
 
     return () => {
-      window.removeEventListener("focus", load);
+      window.removeEventListener("focus", handleFocus);
     };
   }, [load]);
 
@@ -130,8 +132,8 @@ export default function Dashboard() {
 
     return [...sessions]
       .filter((s) => (s.title || "").toLowerCase().includes(term))
-      .sort((a, b) => new Date(b[sortBy]) - new Date(a[sortBy]));
-  }, [sessions, search, sortBy]);
+      .sort((a, b) => Date.parse(b[sortBy]) - Date.parse(a[sortBy]));
+  }, [sessions, debouncedSearch, sortBy]);
 
   return (
     <div className="min-h-screen bg-gray-950 text-white flex flex-col">
