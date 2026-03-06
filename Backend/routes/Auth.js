@@ -22,6 +22,13 @@ const app = express.Router();
 
 app.use(express.json());
 
+const redisClient = new Redis(process.env.REDIS_URL, {
+  lazyConnect: true,
+  enableOfflineQueue: false,
+});
+
+redisClient.on("error", (err) => console.error("Auth Redis Error: ", err));
+
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
