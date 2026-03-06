@@ -13,10 +13,12 @@ const sessionRoutes = require("./routes/SessionInsert");
 const protectedRoutes = require("./routes/ProtectedRoute");
 const ProfileRoutes = require("./routes/Profile");
 const analyzeRouter = require("./routes/analyse");
+const compression = require("compression");
 const env = process.env;
 
 const app = express();
 
+app.use(compression());
 app.set("trust proxy", 1);
 
 app.use(

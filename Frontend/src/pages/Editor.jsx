@@ -283,10 +283,25 @@ export default function Editor() {
       typescript: "ts",
       python: "py",
       cpp: "cpp",
+      c: "c",
       java: "java",
       go: "go",
-      c: "c",
+      ruby: "rb",
+      php: "php",
+      csharp: "cs",
+      swift: "swift",
+      kotlin: "kt",
+      rust: "rs",
+      scala: "scala",
+      r: "r",
+      dart: "dart",
+      haskell: "hs",
+      lua: "lua",
+      groovy: "groovy",
+      sql: "sql",
+      bash: "sh",
     };
+
     const blob = new Blob([code], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
