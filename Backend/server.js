@@ -30,7 +30,12 @@ app.use(morgan("combined"));
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(mongoSanitize());
+app.use(
+  mongoSanitize({
+    replaceWith: "_",
+    allowDots: true,
+  }),
+);
 
 const PORT = 5000;
 

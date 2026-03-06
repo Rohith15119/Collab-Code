@@ -27,8 +27,15 @@ const loginLimiter = rateLimit({
 });
 
 app.get("/me", authenticate, async (req, res) => {
-  const user = await User.findByPk(req.user.id);
-  return res.status(200).json({ user });
+  try {
+    const user = await User.findByPk(req.user.id, {
+      attributes: ["id", "name", "email", "provider"], // don't send password hash
+    });
+    if (!user) return res.status(404).json({ error: "User not found" });
+    return res.status(200).json({ user });
+  } catch (err) {
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
 
 app.post("/register", registerValidation, async (req, res) => {

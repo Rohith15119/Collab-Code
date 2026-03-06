@@ -126,7 +126,7 @@ export default function Register() {
           <button
             type="button"
             onClick={() => {
-              window.location.href = `${import.meta.env.VITE_API_URL}/api/auth/google`;
+              window.location.href = `${import.meta.env.VITE_API_URL}/auth/google`;
             }}
             className="w-full bg-white hover:bg-gray-100 text-black font-semibold py-3 rounded-xl transition flex items-center justify-center gap-2"
           >
