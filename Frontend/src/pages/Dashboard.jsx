@@ -69,44 +69,35 @@ export default function Dashboard() {
 
   useEffect(() => {
     const handleFocus = () => load();
-
     window.addEventListener("focus", handleFocus);
-
-    return () => {
-      window.removeEventListener("focus", handleFocus);
-    };
+    return () => window.removeEventListener("focus", handleFocus);
   }, [load]);
 
   const createSession = async () => {
     setCreating(true);
 
     try {
-      // find all existing Untitled Session numbers
-      const untitledNumbers = sessions
+      // Collect all existing "Untitled-Session - N" numbers
+      const usedNumbers = sessions
         .map((s) => {
-          const match = (s.title || "").match(
-            /^Untitled Session(?: - (\d+))?$/,
-          );
-          return match ? Number(match[1] || 1) : null;
+          const match = (s.title || "").match(/^Untitled-Session - (\d+)$/);
+          // Use null check (not Boolean) so we never accidentally drop 0
+          return match ? Number(match[1]) : null;
         })
-        .filter(Boolean);
+        .filter((n) => n !== null);
 
-      // determine next index safely
-      const nextIndex = untitledNumbers.length
-        ? Math.max(...untitledNumbers) + 1
-        : 1;
+      // Next number = max existing + 1, or start at 1
+      const nextIndex =
+        usedNumbers.length > 0 ? Math.max(...usedNumbers) + 1 : 1;
 
-      const newTitle =
-        nextIndex === 1
-          ? "Untitled Session - 1"
-          : `Untitled Session - ${nextIndex}`;
+      const newTitle = `Untitled-Session - ${nextIndex}`;
 
       const { data } = await api.post("/session/create-session", {
         title: newTitle,
         language: "javascript",
       });
 
-      // update dashboard instantly
+      // Optimistically update dashboard
       setSessions((prev) => [data.session, ...prev]);
 
       navigate(`/editor/${data.session.roomId}`);
