@@ -58,6 +58,7 @@ const sessionSchema = new mongoose.Schema(
   },
 );
 
-sessionSchema.index({ ownerId: 1, updatedAt: -1, sharedWith: 1 });
+sessionSchema.index({ ownerId: 1, updatedAt: -1 }); // covers /my perfectly
+sessionSchema.index({ roomId: 1, ownerId: 1 }); // covers PUT + DELETE
 
 module.exports = mongoose.model("Session", sessionSchema);

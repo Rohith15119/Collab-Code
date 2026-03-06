@@ -152,6 +152,13 @@ app.use((req, res) => {
   res.status(404).json({ message: "Route not found" });
 });
 
+app.use((req, res, next) => {
+  req.setTimeout(8000, () => {
+    res.status(503).json({ error: "Request timeout" });
+  });
+  next();
+});
+
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ message: "Internal Server Error" });
