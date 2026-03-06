@@ -22,10 +22,7 @@ const app = express.Router();
 
 app.use(express.json());
 
-const redisClient = new Redis(process.env.REDIS_URL, {
-  lazyConnect: true,
-  enableOfflineQueue: false,
-});
+const redisClient = new Redis(process.env.REDIS_URL);
 
 redisClient.on("error", (err) => console.error("Auth Redis Error: ", err));
 
