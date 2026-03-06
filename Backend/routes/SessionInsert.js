@@ -69,56 +69,32 @@ router.post("/create-session", authenticate, async (req, res) => {
 
 router.get("/my", authenticate, async (req, res) => {
   try {
-    const cached = await getCached(req.user.id);
-
     res.set("Cache-Control", "private, max-age=15, stale-while-revalidate=30");
 
+    const cached = await getCached(req.user.id);
     if (cached) {
-      return res
-        .status(200)
-        .json({ success: true, count: cached.length, sessions: cached });
+      return res.status(200).json({
+        success: true,
+        count: cached.length,
+        sessions: cached,
+      });
     }
 
-    const limit = Math.min(parseInt(req.query.limit) || 20, 100);
-    const cursor = req.query.cursor ? new Date(req.query.cursor) : null;
-    const filter = { ownerId: req.user.id };
+    const sessions = await Session.find({ ownerId: req.user.id })
+      .select("title language roomId updatedAt createdAt -_id")
+      .sort({ updatedAt: -1 }) // Sort newest to oldest
+      .lean(); // Skips Mongoose object hydration (Crucial for speed)
 
-    if (cursor) {
-      filter.updatedAt = { $lt: cursor };
-    }
+    setCache(req.user.id, sessions);
 
-    const sessions = await Session.find(filter, {
-      title: 1,
-      roomId: 1,
-      updatedAt: 1,
-      createdAt: 1,
-      language: 1,
-      _id: 0,
-    })
-      .sort({ ownerId: 1, updatedAt: -1 })
-      .limit(limit + 1)
-      .lean();
-
-    const hasMorePages = sessions.length > limit;
-
-    if (hasMorePages) sessions.pop();
-
-    const nextCursor = hasMorePages
-      ? sessions[sessions.length - 1].updatedAt.toISOString()
-      : null;
-
-    if (!cursor) await setCache(req.user.id, sessions);
-
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       count: sessions.length,
       sessions,
-      nextCursor,
-      hasMorePages,
     });
   } catch (err) {
     console.error("MY SESSIONS ERROR:", err);
-    res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: "Internal server error" });
   }
 });
 
