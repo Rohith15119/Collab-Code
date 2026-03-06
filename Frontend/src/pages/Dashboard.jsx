@@ -116,16 +116,22 @@ export default function Dashboard() {
 
   const filtered = useMemo(() => {
     const term = debouncedSearch.toLowerCase();
-    // secondary key: if sorting by updatedAt, tiebreak on createdAt and vice versa
     const secondaryKey = sortBy === "updatedAt" ? "createdAt" : "updatedAt";
+    // updatedAt → newest first (descending)
+    // createdAt → oldest first (ascending)
+    const isDesc = sortBy === "updatedAt";
 
     return [...sessions]
       .filter((s) => (s.title || "").toLowerCase().includes(term))
       .sort((a, b) => {
-        const primary = Date.parse(b[sortBy]) - Date.parse(a[sortBy]);
+        const pa = Date.parse(a[sortBy]);
+        const pb = Date.parse(b[sortBy]);
+        const primary = isDesc ? pb - pa : pa - pb;
         if (primary !== 0) return primary;
-        // tiebreaker: fall back to the other timestamp for stable ordering
-        return Date.parse(b[secondaryKey]) - Date.parse(a[secondaryKey]);
+        // tiebreaker in the same direction on the other key
+        const sa = Date.parse(a[secondaryKey]);
+        const sb = Date.parse(b[secondaryKey]);
+        return isDesc ? sb - sa : sa - sb;
       });
   }, [sessions, debouncedSearch, sortBy]);
 
