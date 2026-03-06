@@ -98,7 +98,7 @@ export default function Dashboard() {
 
       const newTitle =
         nextIndex === 1
-          ? "Untitled Session"
+          ? "Untitled Session - 1"
           : `Untitled Session - ${nextIndex}`;
 
       const { data } = await api.post("/session/create-session", {

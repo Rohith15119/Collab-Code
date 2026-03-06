@@ -14,6 +14,13 @@ const LANG_COLORS = {
   default: "text-gray-400 bg-gray-400/10",
 };
 
+// Safely formats a date string — returns null if invalid
+function formatDate(value) {
+  if (!value) return null;
+  const d = new Date(value);
+  return isNaN(d.getTime()) ? null : d.toLocaleString();
+}
+
 function SessionCard({
   id,
   title,
@@ -26,6 +33,7 @@ function SessionCard({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const langClass = LANG_COLORS[language] ?? LANG_COLORS.default;
+  const formattedDate = formatDate(createdAt);
 
   return (
     <>
@@ -50,11 +58,13 @@ function SessionCard({
           {title}
         </h3>
 
-        {/* Meta */}
-        <div className="flex items-center gap-3 text-[11px] text-gray-600">
+        {/* Meta — separator dot only rendered when both values exist */}
+        <div className="flex items-center gap-1.5 text-[11px] text-gray-600">
           {lineCount != null && <span>{lineCount} lines</span>}
-
-          {createdAt && <span>· {new Date(createdAt).toLocaleString()}</span>}
+          {lineCount != null && formattedDate && (
+            <span className="text-gray-700">·</span>
+          )}
+          {formattedDate && <span>{formattedDate}</span>}
         </div>
 
         {/* Top-right action buttons */}
@@ -104,7 +114,7 @@ function ShareModal({ roomId, title, onClose }) {
   const [email, setEmail] = useState("");
   const [sharing, setSharing] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [shared, setShared] = useState([]); // emails invited this session
+  const [shared, setShared] = useState([]);
 
   const shareLink = `${window.location.origin}/editor/${roomId}`;
 
