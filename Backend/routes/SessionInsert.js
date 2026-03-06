@@ -14,10 +14,7 @@ const limiter = rateLimit({
 
 router.use(limiter);
 
-const redis = new Redis(process.env.REDIS_URL, {
-  lazyConnect: true,
-  enableOfflineQueue: false,
-});
+const redis = new Redis(process.env.REDIS_URL);
 
 redis.on("error", (err) => console.error("Redis Error: ", err));
 
