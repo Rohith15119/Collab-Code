@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import api from "../api/index";
 import toast from "react-hot-toast";
@@ -21,15 +21,9 @@ style.textContent = `
     from { opacity: 0; }
     to   { opacity: 1; }
   }
-  .anim-fade-down {
-    animation: fadeSlideDown 0.45s ease both;
-  }
-  .anim-fade-up {
-    animation: fadeSlideUp 0.35s ease both;
-  }
-  .anim-fade {
-    animation: fadeIn 0.45s ease both;
-  }
+  .anim-fade-down { animation: fadeSlideDown 0.45s ease both; }
+  .anim-fade-up   { animation: fadeSlideUp  0.35s ease both; }
+  .anim-fade      { animation: fadeIn       0.45s ease both; }
 `;
 if (!document.head.querySelector("[data-dashboard-anim]")) {
   style.setAttribute("data-dashboard-anim", "true");
@@ -39,6 +33,7 @@ if (!document.head.querySelector("[data-dashboard-anim]")) {
 export default function Dashboard() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation(); // ← track in-app navigation
 
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -63,10 +58,16 @@ export default function Dashboard() {
     }
   }, []);
 
+  // ✅ FIX 1: Reload every time the user navigates back to this page.
+  // location.key is unique per navigation event in React Router — this fires
+  // on every visit to /dashboard, replacing the broken window-focus approach
+  // which never triggered for in-app back-navigation.
   useEffect(() => {
+    setLoading(true);
     load();
-  }, [load]);
+  }, [load, location.key]);
 
+  // Keep focus listener only for cross-tab / separate browser window switches
   useEffect(() => {
     const handleFocus = () => load();
     window.addEventListener("focus", handleFocus);
@@ -75,18 +76,14 @@ export default function Dashboard() {
 
   const createSession = async () => {
     setCreating(true);
-
     try {
-      // Collect all existing "Untitled-Session - N" numbers
       const usedNumbers = sessions
         .map((s) => {
           const match = (s.title || "").match(/^Untitled-Session - (\d+)$/);
-          // Use null check (not Boolean) so we never accidentally drop 0
           return match ? Number(match[1]) : null;
         })
         .filter((n) => n !== null);
 
-      // Next number = max existing + 1, or start at 1
       const nextIndex =
         usedNumbers.length > 0 ? Math.max(...usedNumbers) + 1 : 1;
 
@@ -97,9 +94,7 @@ export default function Dashboard() {
         language: "javascript",
       });
 
-      // Optimistically update dashboard
       setSessions((prev) => [data.session, ...prev]);
-
       navigate(`/editor/${data.session.roomId}`);
     } catch {
       toast.error("Failed to create session");
@@ -120,7 +115,6 @@ export default function Dashboard() {
 
   const filtered = useMemo(() => {
     const term = debouncedSearch.toLowerCase();
-
     return [...sessions]
       .filter((s) => (s.title || "").toLowerCase().includes(term))
       .sort((a, b) => Date.parse(b[sortBy]) - Date.parse(a[sortBy]));
@@ -178,7 +172,6 @@ export default function Dashboard() {
           className="anim-fade-down flex gap-3 mb-8"
           style={{ animationDelay: "80ms" }}
         >
-          {/* Search */}
           <div className="relative flex-1">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">
               🔍
@@ -205,7 +198,6 @@ export default function Dashboard() {
             )}
           </div>
 
-          {/* Sort */}
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
@@ -239,6 +231,7 @@ export default function Dashboard() {
                   title={session.title}
                   language={session.language}
                   createdAt={session.createdAt}
+                  updatedAt={session.updatedAt}
                   onClick={() => navigate(`/editor/${session.roomId}`)}
                   onDelete={deleteSession}
                 />

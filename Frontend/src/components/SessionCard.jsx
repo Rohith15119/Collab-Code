@@ -14,11 +14,19 @@ const LANG_COLORS = {
   default: "text-gray-400 bg-gray-400/10",
 };
 
-// Safely formats a date string — returns null if invalid
+// ✅ FIX: Robust date formatter — returns null on missing/invalid input.
+// Renders a short, readable format e.g. "Mar 6, 2026, 4:32 PM"
 function formatDate(value) {
   if (!value) return null;
   const d = new Date(value);
-  return isNaN(d.getTime()) ? null : d.toLocaleString();
+  if (isNaN(d.getTime())) return null;
+  return d.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }
 
 function SessionCard({
@@ -26,6 +34,7 @@ function SessionCard({
   title,
   language,
   createdAt,
+  updatedAt, // ✅ NEW: accept updatedAt from Dashboard
   lineCount,
   onClick,
   onDelete,
@@ -33,7 +42,11 @@ function SessionCard({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const langClass = LANG_COLORS[language] ?? LANG_COLORS.default;
-  const formattedDate = formatDate(createdAt);
+
+  // ✅ FIX: Prefer updatedAt (most recent activity); fall back to createdAt.
+  // Mongoose timestamps: true always populates both from the API, so one
+  // of these will always be a valid ISO string.
+  const displayDate = formatDate(updatedAt) ?? formatDate(createdAt);
 
   return (
     <>
@@ -58,13 +71,13 @@ function SessionCard({
           {title}
         </h3>
 
-        {/* Meta — separator dot only rendered when both values exist */}
-        <div className="flex items-center gap-1.5 text-[11px] text-gray-600">
+        {/* Meta — dot separator only renders when both values are present */}
+        <div className="flex items-center gap-1.5 text-[11px] text-gray-500">
           {lineCount != null && <span>{lineCount} lines</span>}
-          {lineCount != null && formattedDate && (
+          {lineCount != null && displayDate && (
             <span className="text-gray-700">·</span>
           )}
-          {formattedDate && <span>{formattedDate}</span>}
+          {displayDate && <span>{displayDate}</span>}
         </div>
 
         {/* Top-right action buttons */}
