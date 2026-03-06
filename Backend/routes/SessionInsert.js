@@ -40,8 +40,19 @@ async function setCache(ownerId, data) {
 
 async function invalidateCache(ownerId) {
   try {
-    const keys = await redis.keys(`sessions:${ownerId}:*`);
-    if (keys.length) await redis.del(...keys);
+    const pattern = `sessions:${ownerId}:*`;
+    let cursor = "0";
+    do {
+      const [nextCursor, keys] = await redis.scan(
+        cursor,
+        "MATCH",
+        pattern,
+        "COUNT",
+        100,
+      );
+      cursor = nextCursor;
+      if (keys.length) await redis.del(...keys);
+    } while (cursor !== "0");
   } catch {
     // silent fail
   }
@@ -70,7 +81,7 @@ router.post("/create-session", authenticate, async (req, res) => {
 
 router.get("/my", authenticate, async (req, res) => {
   try {
-    res.set("Cache-Control", "private, max-age=15, stale-while-revalidate=30");
+    res.set("Cache-Control", "private, no-cache");
 
     const limitParam = parseInt(req.query.limit);
     const limit = limitParam > 0 ? limitParam : 0; // 0 = no limit in Mongoose
