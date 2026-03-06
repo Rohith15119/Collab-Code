@@ -38,7 +38,8 @@ export default function Dashboard() {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState("createdAt");
+  // ✅ FIX: default matches the first <option> shown in the select ("Last Updated")
+  const [sortBy, setSortBy] = useState("updatedAt");
   const [creating, setCreating] = useState(false);
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
@@ -115,9 +116,17 @@ export default function Dashboard() {
 
   const filtered = useMemo(() => {
     const term = debouncedSearch.toLowerCase();
+    // secondary key: if sorting by updatedAt, tiebreak on createdAt and vice versa
+    const secondaryKey = sortBy === "updatedAt" ? "createdAt" : "updatedAt";
+
     return [...sessions]
       .filter((s) => (s.title || "").toLowerCase().includes(term))
-      .sort((a, b) => Date.parse(b[sortBy]) - Date.parse(a[sortBy]));
+      .sort((a, b) => {
+        const primary = Date.parse(b[sortBy]) - Date.parse(a[sortBy]);
+        if (primary !== 0) return primary;
+        // tiebreaker: fall back to the other timestamp for stable ordering
+        return Date.parse(b[secondaryKey]) - Date.parse(a[secondaryKey]);
+      });
   }, [sessions, debouncedSearch, sortBy]);
 
   return (
