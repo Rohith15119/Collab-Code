@@ -125,13 +125,18 @@ router.get("/my", authenticate, async (req, res) => {
 router.get("/:roomId", authenticate, async (req, res) => {
   try {
     const session = await Session.findOne({ roomId: req.params.roomId })
-      .select("title language codeSnippet createdAt -_id")
+      // FIX: Added ownerId, sharedWith, and code to the selection
+      .select(
+        "title language code codeSnippet createdAt ownerId sharedWith -_id",
+      )
       .lean();
+
     if (!session) return res.status(404).json({ error: "Session not found" });
 
+    // FIX: Added optional chaining (?.) just in case sharedWith is null/undefined in old DB records
     const canAccess =
       session.ownerId === req.user.id ||
-      session.sharedWith.includes(req.user.id);
+      session.sharedWith?.includes(req.user.id);
 
     if (!canAccess) return res.status(403).json({ error: "Access Denied" });
 
