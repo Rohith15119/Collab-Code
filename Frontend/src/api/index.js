@@ -6,6 +6,12 @@ const api = axios.create({
   withCredentials: true, // required for cookies
 });
 
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("token");
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
 // Handle unauthorized responses globally
 api.interceptors.response.use(
   (response) => response,
@@ -19,10 +25,12 @@ api.interceptors.response.use(
     );
 
     if (error.response?.status === 401 && !isPublic) {
+      localStorage.removeItem("token");
       window.location.href = "/login";
     }
 
     return Promise.reject(error);
   },
 );
+
 export default api;

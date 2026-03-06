@@ -71,6 +71,8 @@ router.get("/my", authenticate, async (req, res) => {
   try {
     const cached = await getCached(req.user.id);
 
+    res.set("Cache-Control", "private, max-age=15, stale-while-revalidate=30");
+
     if (cached) {
       return res
         .status(200)
@@ -93,7 +95,7 @@ router.get("/my", authenticate, async (req, res) => {
       language: 1,
       _id: 0,
     })
-      .sort({ updatedAt: -1 })
+      .sort({ ownerId: 1, updatedAt: -1 })
       .limit(limit + 1)
       .lean();
 

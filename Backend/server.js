@@ -14,25 +14,23 @@ const protectedRoutes = require("./routes/ProtectedRoute");
 const ProfileRoutes = require("./routes/Profile");
 const analyzeRouter = require("./routes/analyse");
 const compression = require("compression");
-const env = process.env;
-
+const mongoSanitize = require("express-mongo-sanitize");
 const app = express();
 
 app.use(compression());
+app.use(helmet());
 app.set("trust proxy", 1);
-
 app.use(
   cors({
     origin: ["http://localhost:5173", "https://collab-code-one.vercel.app"],
     credentials: true,
   }),
 );
-app.use(cookieParser());
 app.use(morgan("combined"));
-
-app.use(helmet());
+app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(mongoSanitize());
 
 const PORT = 5000;
 
@@ -126,6 +124,19 @@ const htmlPageContent = `
 </html>
 `;
 
+app.use((req, res) => {
+  res.status(404).json({ message: "Route not found" });
+});
+
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ message: "Internal Server Error" });
+});
+
+app.get("/", (req, res) => {
+  res.status(200).send(htmlPageContent);
+});
+
 //Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/session", sessionRoutes);
@@ -137,10 +148,6 @@ app.use("/api/sharing", require("./routes/sharedView"));
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ message: "Internal Server Error" });
-});
-
-app.get("/", (req, res) => {
-  res.status(200).send(htmlPageContent);
 });
 
 app.listen(PORT, () => {

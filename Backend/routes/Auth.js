@@ -91,16 +91,9 @@ app.post("/login", loginLimiter, loginValidation, async (req, res) => {
       { expiresIn: "1d" },
     );
 
-    res.cookie("token", accessToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "none",
-      path: "/",
-      maxAge: 24 * 60 * 60 * 1000,
-    });
-
     res.status(200).json({
       message: "Login successful",
+      token: accessToken,
       user: {
         id: user.id,
         name: user.name,
@@ -108,7 +101,7 @@ app.post("/login", loginLimiter, loginValidation, async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("LOGIN ERROR:", err); // ADD THIS
+    console.error("LOGIN ERROR:", err);
     res.status(500).json({ error: err.message || "Internal server error" });
   }
 });
@@ -209,15 +202,7 @@ app.get(
         { expiresIn: "1d" },
       );
 
-      res.cookie("token", token, {
-        httpOnly: true,
-        secure: true, // true in production (HTTPS)
-        sameSite: "none",
-        path: "/",
-        maxAge: 24 * 60 * 60 * 1000,
-      });
-
-      res.redirect(`${process.env.CLIENT_URL}/dashboard`);
+      res.redirect(`${process.env.CLIENT_URL}/dashboard?token=${token}`);
     } catch (err) {
       console.error("Google Auth Error:", err);
       res.status(500).json({ error: err.message });
@@ -226,17 +211,9 @@ app.get(
 );
 
 app.post("/logout", (req, res) => {
-  res.cookie("token", "", {
-    httpOnly: true,
-    secure: true,
-    sameSite: "none",
-    expires: new Date(0),
-    path: "/",
-  });
-
   res.json({ success: true });
 });
-// Update name
+
 app.put("/profile", authenticate, async (req, res) => {
   try {
     const { name } = req.body;
@@ -252,10 +229,8 @@ app.delete("/delete-account", authenticate, async (req, res) => {
   try {
     const userId = req.user.id;
 
-    // Delete owned sessions
     await Session.deleteMany({ ownerId: userId });
 
-    // Remove from shared sessions
     await Session.updateMany(
       { sharedWith: userId },
       { $pull: { sharedWith: userId } },
@@ -263,8 +238,6 @@ app.delete("/delete-account", authenticate, async (req, res) => {
 
     // Delete user
     await User.destroy({ where: { id: userId } });
-
-    res.clearCookie("token");
 
     res.json({ success: true });
   } catch (err) {

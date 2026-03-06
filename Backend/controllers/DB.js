@@ -2,8 +2,6 @@ const sequelize = require("../config/database");
 const connectMongo = require("../config/mongo");
 require("../models/User");
 
-let isConnected = false;
-
 async function startServer() {
   try {
     await Promise.all([sequelize.authenticate(), connectMongo()]);
@@ -13,8 +11,6 @@ async function startServer() {
       await sequelize.sync({ alter: true });
       console.log("🛠 Tables synced (development mode)");
     }
-
-    isConnected = true;
   } catch (error) {
     console.error("❌ Failed to connect to database");
     console.error("Error:", error);
@@ -24,9 +20,13 @@ async function startServer() {
 
 startServer();
 
-process.on("SIGINT", async () => {
-  console.log("🛑 Shutting down gracefully...");
-  await sequelize.close();
+process.on("SIGTERM", async () => {
+  console.log("🛑 SIGTERM received. Closing all connections...");
+  await Promise.all([
+    sequelize.close(),
+    mongoose.connection.close(),
+    redis.quit(), // if redis is accessible here
+  ]);
   process.exit(0);
 });
 

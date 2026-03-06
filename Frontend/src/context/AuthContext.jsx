@@ -7,9 +7,16 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Check if already logged in on app load
   useEffect(() => {
     let isMounted = true;
+
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("token");
+
+    if (token) {
+      localStorage.setItem("token", token);
+      window.history.replaceState({}, "", "/dashboard");
+    }
 
     api
       .get("/auth/me")
@@ -17,6 +24,7 @@ export const AuthProvider = ({ children }) => {
         if (isMounted) setUser(data.user);
       })
       .catch(() => {
+        localStorage.removeItem("token");
         if (isMounted) setUser(null);
       })
       .finally(() => {
@@ -31,7 +39,8 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     try {
       const { data } = await api.post("/auth/login", { email, password });
-      setUser(data.user); // cookie set by backend automatically
+      localStorage.setItem("token", data.token);
+      setUser(data.user);
     } catch (err) {
       console.error(err);
     }
@@ -62,6 +71,7 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     try {
       await api.post("/auth/logout");
+      localStorage.removeItem("token");
       setUser(null);
     } catch (err) {
       console.error(err);

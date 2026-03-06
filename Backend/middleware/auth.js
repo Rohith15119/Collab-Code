@@ -1,7 +1,8 @@
 const jwt = require("jsonwebtoken");
 
 function authenticate(req, res, next) {
-  const token = req.cookies.token;
+  const authHeader = req.headers["authorization"];
+  const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
 
   if (!token) return res.status(401).json({ error: "No token found" });
 
@@ -10,7 +11,7 @@ function authenticate(req, res, next) {
     req.user = decoded;
     next();
   } catch (err) {
-    return res.status(401).json({ error: "Invalid token" });
+    return res.status(401).json({ error: "Invalid or expired token" });
   }
 }
 
