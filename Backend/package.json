@@ -34,6 +34,7 @@
     "pg-hstore": "^2.3.4",
     "pino": "^10.3.1",
     "pino-http": "^11.0.0",
+    "rate-limit-redis": "^4.3.1",
     "resend": "^6.9.3",
     "sequelize": "^6.37.7",
     "uuid": "^13.0.0"
