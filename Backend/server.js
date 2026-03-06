@@ -30,12 +30,6 @@ app.use(morgan("combined"));
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(
-  mongoSanitize({
-    replaceWith: "_",
-    allowDots: true,
-  }),
-);
 
 const PORT = 5000;
 
@@ -129,13 +123,17 @@ const htmlPageContent = `
 </html>
 `;
 
-app.use((req, res) => {
-  res.status(404).json({ message: "Route not found" });
-});
+app.use((req, res, next) => {
+  const sanitize = require("express-mongo-sanitize");
+  sanitize.sanitize(req.body, { replaceWith: "_" });
+  sanitize.sanitize(req.params, { replaceWith: "_" });
 
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ message: "Internal Server Error" });
+  // Only sanitize query if it's not a read-only getter
+  const queryDescriptor = Object.getOwnPropertyDescriptor(req, "query");
+  if (!queryDescriptor || queryDescriptor.writable || queryDescriptor.set) {
+    sanitize.sanitize(req.query, { replaceWith: "_" });
+  }
+  next();
 });
 
 app.get("/", (req, res) => {
@@ -149,6 +147,10 @@ app.use("/api/auth", protectedRoutes);
 app.use("/api/profile", ProfileRoutes);
 app.use("/api", analyzeRouter);
 app.use("/api/sharing", require("./routes/sharedView"));
+
+app.use((req, res) => {
+  res.status(404).json({ message: "Route not found" });
+});
 
 app.use((err, req, res, next) => {
   console.error(err.stack);
