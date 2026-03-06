@@ -124,7 +124,9 @@ router.get("/my", authenticate, async (req, res) => {
 
 router.get("/:roomId", authenticate, async (req, res) => {
   try {
-    const session = await Session.findOne({ roomId: req.params.roomId }).lean();
+    const session = await Session.findOne({ roomId: req.params.roomId })
+      .select("title language codeSnippet createdAt -_id")
+      .lean();
     if (!session) return res.status(404).json({ error: "Session not found" });
 
     const canAccess =
@@ -155,7 +157,7 @@ router.put("/:roomId", authenticate, async (req, res) => {
     const session = await Session.findOneAndUpdate(
       { roomId: req.params.roomId, ownerId: req.user.id },
       { $set },
-      { new: true, lean: true },
+      { returnDocument: "after", lean: true },
     );
 
     if (!session) return res.status(404).json({ error: "Session not found" });

@@ -68,7 +68,11 @@ app.post("/login", loginLimiter, loginValidation, async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const user = await User.findOne({ where: { email } });
+    const user = await User.findOne({
+      where: { email },
+      raw: true,
+      attributes: ["id"],
+    });
 
     // FIRST check if user exists
     if (!user) {
@@ -236,15 +240,15 @@ app.delete("/delete-account", authenticate, async (req, res) => {
   try {
     const userId = req.user.id;
 
-    await Session.deleteMany({ ownerId: userId });
-
-    await Session.updateMany(
-      { sharedWith: userId },
-      { $pull: { sharedWith: userId } },
-    );
-
-    // Delete user
-    await User.destroy({ where: { id: userId } });
+    // Run all three database operations at the exact same time
+    await Promise.all([
+      Session.deleteMany({ ownerId: userId }),
+      Session.updateMany(
+        { sharedWith: userId },
+        { $pull: { sharedWith: userId } },
+      ),
+      User.destroy({ where: { id: userId } }),
+    ]);
 
     res.json({ success: true });
   } catch (err) {
