@@ -117,21 +117,17 @@ export default function Dashboard() {
   const filtered = useMemo(() => {
     const term = debouncedSearch.toLowerCase();
     const secondaryKey = sortBy === "updatedAt" ? "createdAt" : "updatedAt";
-    // updatedAt → newest first (descending)
-    // createdAt → oldest first (ascending)
-    const isDesc = sortBy === "updatedAt";
 
+    // Both sorts are newest-first (descending) so switching between them
+    // always produces a visibly different order: updatedAt changes on every
+    // edit while createdAt stays fixed at creation time.
     return [...sessions]
       .filter((s) => (s.title || "").toLowerCase().includes(term))
       .sort((a, b) => {
-        const pa = Date.parse(a[sortBy]);
-        const pb = Date.parse(b[sortBy]);
-        const primary = isDesc ? pb - pa : pa - pb;
+        const primary = Date.parse(b[sortBy]) - Date.parse(a[sortBy]);
         if (primary !== 0) return primary;
-        // tiebreaker in the same direction on the other key
-        const sa = Date.parse(a[secondaryKey]);
-        const sb = Date.parse(b[secondaryKey]);
-        return isDesc ? sb - sa : sa - sb;
+        // stable tiebreaker on the other timestamp, also descending
+        return Date.parse(b[secondaryKey]) - Date.parse(a[secondaryKey]);
       });
   }, [sessions, debouncedSearch, sortBy]);
 
