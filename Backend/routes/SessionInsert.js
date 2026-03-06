@@ -40,9 +40,10 @@ async function setCache(ownerId, data) {
 
 async function invalidateCache(ownerId) {
   try {
-    await redis.del(`sessions:${ownerId}`);
+    const keys = await redis.keys(`sessions:${ownerId}:*`);
+    if (keys.length) await redis.del(...keys);
   } catch {
-    //keep silent
+    // silent fail
   }
 }
 
@@ -71,24 +72,28 @@ router.get("/my", authenticate, async (req, res) => {
   try {
     res.set("Cache-Control", "private, max-age=15, stale-while-revalidate=30");
 
-    // Grab a limit from the query, default to 50
-    const limit = parseInt(req.query.limit) || 50;
-    const cacheKey = `sessions:${req.user.id}:limit:${limit}`; // Update cache key
+    const limitParam = parseInt(req.query.limit);
+    const limit = limitParam > 0 ? limitParam : 0; // 0 = no limit in Mongoose
 
-    const cached = await getCached(cacheKey); // Use new cache key
+    const cacheKey = `${req.user.id}:limit:${limit}`; // No manual prefix — helpers add it
+
+    const cached = await getCached(cacheKey);
     if (cached) {
       return res
         .status(200)
         .json({ success: true, count: cached.length, sessions: cached });
     }
 
-    const sessions = await Session.find({ ownerId: req.user.id })
+    const query = Session.find({ ownerId: req.user.id })
       .select("title language roomId updatedAt createdAt -_id")
       .sort({ updatedAt: -1 })
-      .limit(limit) // <--- ADD THIS LINE
       .lean();
 
-    setCache(cacheKey, sessions); // Use new cache key
+    if (limit > 0) query.limit(limit); // Only apply limit if explicitly requested
+
+    const sessions = await query;
+
+    setCache(cacheKey, sessions);
 
     return res
       .status(200)
@@ -102,7 +107,6 @@ router.get("/my", authenticate, async (req, res) => {
 router.get("/:roomId", authenticate, async (req, res) => {
   try {
     const session = await Session.findOne({ roomId: req.params.roomId })
-      // FIX: Added ownerId, sharedWith, and code to the selection
       .select(
         "title language code codeSnippet createdAt ownerId sharedWith -_id",
       )
