@@ -130,8 +130,10 @@ export default function Editor() {
   const { roomId } = useParams();
   const navigate = useNavigate();
 
-  const [code, setCode] = useState(LANGUAGE_TEMPLATES["javascript"]);
-  const [language, setLanguage] = useState("javascript");
+  const [code, setCode] = useState(null);
+  const [language, setLanguage] = useState(null);
+  const [isLoadingSession, setIsLoadingSession] = useState(true); // ← add this
+
   const [theme, setTheme] = useState("vs-dark");
   const [fontSize, setFontSize] = useState(14);
   const [title, setTitle] = useState("Untitled Session");
@@ -228,7 +230,9 @@ export default function Editor() {
         if (err.name === "CanceledError" || err.name === "AbortError") return;
         toast.error("Session not found");
         navigate("/dashboard");
-      });
+      })
+      .finally(() => setIsLoadingSession(false));
+
     return () => controller.abort();
   }, [roomId]);
 
