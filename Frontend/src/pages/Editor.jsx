@@ -4,6 +4,9 @@ import MonacoEditor, { useMonaco } from "@monaco-editor/react";
 import toast from "react-hot-toast";
 import api from "../api/index";
 
+// ─────────────────────────────────────────────
+// Constants
+// ─────────────────────────────────────────────
 const LANGUAGES = [
   "javascript",
   "typescript",
@@ -54,6 +57,39 @@ const LANGUAGE_TEMPLATES = {
 
 const FONT_SIZES = [12, 14, 16, 18, 20, 22, 24];
 
+const FONT_FAMILIES = [
+  "Fira Code",
+  "JetBrains Mono",
+  "Cascadia Code",
+  "Source Code Pro",
+  "Inconsolata",
+  "monospace",
+];
+
+const LANG_EXT = {
+  javascript: "js",
+  typescript: "ts",
+  python: "py",
+  cpp: "cpp",
+  c: "c",
+  java: "java",
+  go: "go",
+  ruby: "rb",
+  php: "php",
+  csharp: "cs",
+  swift: "swift",
+  kotlin: "kt",
+  rust: "rs",
+  scala: "scala",
+  r: "r",
+  dart: "dart",
+  haskell: "hs",
+  lua: "lua",
+  groovy: "groovy",
+  sql: "sql",
+  bash: "sh",
+};
+
 export const THEME_FILE_MAP = {
   Active4D: "Active4D",
   Amy: "Amy",
@@ -82,6 +118,11 @@ export const THEME_FILE_MAP = {
   monoindustrial: "monoindustrial",
 };
 
+const ALL_THEMES = {
+  "Built-in": ["vs-dark", "light", "hc-black"],
+  Custom: Object.keys(THEME_FILE_MAP),
+};
+
 const themeCache = {};
 
 export const loadTheme = async (monacoInstance, themeName) => {
@@ -102,12 +143,12 @@ export const loadTheme = async (monacoInstance, themeName) => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       themeCache[themeName] = await res.json();
     }
-    const themeData = themeCache[themeName];
+    const d = themeCache[themeName];
     monacoInstance.editor.defineTheme(themeName, {
-      base: themeData.base || "vs-dark",
+      base: d.base || "vs-dark",
       inherit: true,
-      rules: themeData.rules || [],
-      colors: themeData.colors || {},
+      rules: d.rules || [],
+      colors: d.colors || {},
     });
     monacoInstance.editor.setTheme(themeName);
   } catch {
@@ -116,7 +157,7 @@ export const loadTheme = async (monacoInstance, themeName) => {
 };
 
 const COMPLEXITY_COLOR = {
-  "O(1)": "text-green-400",
+  "O(1)": "text-emerald-400",
   "O(log n)": "text-green-300",
   "O(n)": "text-yellow-300",
   "O(n log n)": "text-orange-300",
@@ -125,70 +166,389 @@ const COMPLEXITY_COLOR = {
   "O(n!)": "text-pink-600",
 };
 
+// ─────────────────────────────────────────────
+// Sub-components
+// ─────────────────────────────────────────────
+
+/** Animated skeleton for loading state */
+function LoadingSkeleton() {
+  return (
+    <div className="flex flex-col w-full h-full bg-gray-950 p-6 gap-3 animate-pulse">
+      <div className="h-4 w-1/3 bg-gray-800 rounded" />
+      <div className="h-4 w-2/3 bg-gray-800 rounded" />
+      <div className="h-4 w-1/2 bg-gray-800 rounded" />
+      <div className="h-4 w-3/4 bg-gray-800 rounded" />
+      <div className="h-4 w-2/5 bg-gray-800 rounded" />
+      <div className="mt-4 h-4 w-1/2 bg-gray-800 rounded" />
+      <div className="h-4 w-2/3 bg-gray-800 rounded" />
+      <div className="h-4 w-1/3 bg-gray-800 rounded" />
+    </div>
+  );
+}
+
+/** VS Code-style bottom status bar */
+function StatusBar({
+  language,
+  cursorPosition,
+  lineCount,
+  charCount,
+  isSaving,
+  wordWrap,
+  tabSize,
+}) {
+  return (
+    <div className="shrink-0 flex items-center justify-between px-3 h-6 bg-gray-900 border-t border-gray-800 text-[11px] text-gray-500 select-none">
+      <div className="flex items-center gap-3">
+        <span className="text-blue-400 font-medium uppercase tracking-wider">
+          {language}
+        </span>
+        <span className="hidden sm:inline">
+          Ln {cursorPosition.line}, Col {cursorPosition.col}
+        </span>
+        <span className="hidden md:inline text-gray-600">
+          {lineCount} lines
+        </span>
+        <span className="hidden md:inline text-gray-600">
+          {charCount} chars
+        </span>
+      </div>
+      <div className="flex items-center gap-3">
+        {isSaving && (
+          <span className="text-yellow-500 animate-pulse">● Saving…</span>
+        )}
+        <span className="hidden sm:inline">Spaces: {tabSize}</span>
+        <span className="hidden sm:inline">UTF-8</span>
+        <span className="hidden md:inline">
+          {wordWrap ? "Wrap" : "No Wrap"}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/** Settings drawer */
+function SettingsDrawer({
+  open,
+  onClose,
+  theme,
+  setTheme,
+  fontSize,
+  setFontSize,
+  fontFamily,
+  setFontFamily,
+  tabSize,
+  setTabSize,
+  wordWrap,
+  setWordWrap,
+  minimap,
+  setMinimap,
+  ligatures,
+  setLigatures,
+}) {
+  return (
+    <>
+      {/* Backdrop */}
+      {open && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+          onClick={onClose}
+        />
+      )}
+
+      {/* Drawer */}
+      <div
+        className={`fixed top-0 right-0 z-50 h-full w-72 bg-gray-900 border-l border-gray-700 shadow-2xl flex flex-col transition-transform duration-300 ${
+          open ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
+          <span className="text-sm font-semibold text-white">
+            ⚙️ Editor Settings
+          </span>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-white transition-colors text-lg leading-none"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5">
+          {/* Theme */}
+          <div>
+            <label className="block text-xs text-gray-400 font-semibold mb-2 uppercase tracking-wider">
+              Theme
+            </label>
+            {Object.entries(ALL_THEMES).map(([group, themes]) => (
+              <div key={group} className="mb-2">
+                <div className="text-xs text-gray-600 mb-1">{group}</div>
+                <div className="flex flex-wrap gap-1">
+                  {themes.map((t) => (
+                    <button
+                      key={t}
+                      onClick={() => setTheme(t)}
+                      className={`text-[10px] px-2 py-1 rounded-md transition-all border ${
+                        theme === t
+                          ? "bg-blue-600 border-blue-500 text-white"
+                          : "bg-gray-800 border-gray-700 text-gray-300 hover:border-gray-500"
+                      }`}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Font Family */}
+          <div>
+            <label className="block text-xs text-gray-400 font-semibold mb-2 uppercase tracking-wider">
+              Font Family
+            </label>
+            <select
+              value={fontFamily}
+              onChange={(e) => setFontFamily(e.target.value)}
+              className="w-full bg-gray-800 border border-gray-700 text-white text-sm px-3 py-2 rounded-lg outline-none focus:border-blue-500"
+            >
+              {FONT_FAMILIES.map((f) => (
+                <option key={f} value={f}>
+                  {f}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Font Size */}
+          <div>
+            <label className="block text-xs text-gray-400 font-semibold mb-2 uppercase tracking-wider">
+              Font Size — <span className="text-blue-400">{fontSize}px</span>
+            </label>
+            <input
+              type="range"
+              min={10}
+              max={24}
+              step={2}
+              value={fontSize}
+              onChange={(e) => setFontSize(Number(e.target.value))}
+              className="w-full accent-blue-500"
+            />
+            <div className="flex justify-between text-xs text-gray-600 mt-1">
+              <span>10px</span>
+              <span>24px</span>
+            </div>
+          </div>
+
+          {/* Tab Size */}
+          <div>
+            <label className="block text-xs text-gray-400 font-semibold mb-2 uppercase tracking-wider">
+              Tab Size
+            </label>
+            <div className="flex gap-2">
+              {[2, 4, 8].map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setTabSize(s)}
+                  className={`flex-1 py-1.5 text-sm rounded-lg border transition-all ${
+                    tabSize === s
+                      ? "bg-blue-600 border-blue-500 text-white"
+                      : "bg-gray-800 border-gray-700 text-gray-300 hover:border-gray-500"
+                  }`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Toggles */}
+          <div className="space-y-3">
+            <label className="block text-xs text-gray-400 font-semibold uppercase tracking-wider mb-1">
+              Options
+            </label>
+            {[
+              {
+                label: "Word Wrap",
+                value: wordWrap,
+                set: setWordWrap,
+                desc: "Wrap long lines",
+              },
+              {
+                label: "Minimap",
+                value: minimap,
+                set: setMinimap,
+                desc: "Show code minimap",
+              },
+              {
+                label: "Font Ligatures",
+                value: ligatures,
+                set: setLigatures,
+                desc: "Enable ligatures",
+              },
+            ].map(({ label, value, set, desc }) => (
+              <div key={label} className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm text-gray-300">{label}</div>
+                  <div className="text-xs text-gray-600">{desc}</div>
+                </div>
+                <button
+                  onClick={() => set(!value)}
+                  className={`relative w-10 h-5 rounded-full transition-colors ${
+                    value ? "bg-blue-600" : "bg-gray-700"
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                      value ? "translate-x-5" : "translate-x-0.5"
+                    }`}
+                  />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Footer note */}
+        <div className="px-4 py-3 border-t border-gray-700 text-xs text-gray-600">
+          Settings auto-saved to browser
+        </div>
+      </div>
+    </>
+  );
+}
+
+/** Keyboard shortcuts modal */
+function ShortcutsModal({ open, onClose }) {
+  if (!open) return null;
+
+  const shortcuts = [
+    { keys: ["Ctrl", "S"], action: "Save session" },
+    { keys: ["Ctrl", "Enter"], action: "Run code" },
+    { keys: ["Ctrl", "D"], action: "Download file" },
+    { keys: ["Ctrl", "⇧", "C"], action: "Copy code" },
+    { keys: ["Ctrl", "="], action: "Increase font size" },
+    { keys: ["Ctrl", "-"], action: "Decrease font size" },
+    { keys: ["Ctrl", "F"], action: "Find in editor" },
+    { keys: ["Ctrl", "H"], action: "Find & Replace" },
+    { keys: ["Ctrl", "Z"], action: "Undo" },
+    { keys: ["Ctrl", "⇧", "Z"], action: "Redo" },
+    { keys: ["Ctrl", "/"], action: "Toggle comment" },
+    { keys: ["Ctrl", "?"], action: "Show shortcuts" },
+    { keys: ["Esc"], action: "Close output / Go back" },
+  ];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <div className="relative bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-700">
+          <span className="font-semibold text-white text-sm">
+            ⌨️ Keyboard Shortcuts
+          </span>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-white text-lg leading-none"
+          >
+            ✕
+          </button>
+        </div>
+        <div className="px-5 py-4 space-y-1.5 max-h-96 overflow-y-auto">
+          {shortcuts.map(({ keys, action }) => (
+            <div
+              key={action}
+              className="flex items-center justify-between py-1.5 border-b border-gray-800 last:border-0"
+            >
+              <span className="text-sm text-gray-300">{action}</span>
+              <div className="flex items-center gap-1">
+                {keys.map((k) => (
+                  <kbd
+                    key={k}
+                    className="px-1.5 py-0.5 bg-gray-800 border border-gray-600 rounded text-xs text-gray-200 font-mono"
+                  >
+                    {k}
+                  </kbd>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Main Editor Component
+// ─────────────────────────────────────────────
 export default function Editor() {
   const monaco = useMonaco();
   const { roomId } = useParams();
   const navigate = useNavigate();
+  const editorRef = useRef(null);
 
+  // Core
   const [code, setCode] = useState(null);
   const [language, setLanguage] = useState(null);
-  const [isLoadingSession, setIsLoadingSession] = useState(true); // ← add this
-
   const [theme, setTheme] = useState("vs-dark");
   const [fontSize, setFontSize] = useState(14);
   const [title, setTitle] = useState("Untitled Session");
-  const [output, setOutput] = useState(null);
-  const [isRunning, setIsRunning] = useState(false);
-  const [userInput, setUserInput] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
-  const [isEditingTitle, setIsEditingTitle] = useState(false);
-  const [codeByLanguage, setCodeByLanguage] = useState({});
+  const [isLoadingSession, setIsLoadingSession] = useState(true);
+
+  // Editor options
   const [tabSize, setTabSize] = useState(2);
   const [wordWrap, setWordWrap] = useState(true);
   const [minimap, setMinimap] = useState(false);
   const [ligatures, setLigatures] = useState(true);
   const [fontFamily, setFontFamily] = useState("Fira Code");
+
+  // Run / output
+  const [output, setOutput] = useState(null);
+  const [isRunning, setIsRunning] = useState(false);
+  const [userInput, setUserInput] = useState("");
+  const [executionTime, setExecutionTime] = useState(null);
+
+  // Save
+  const [isSaving, setIsSaving] = useState(false);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+
+  // Language switching memory
+  const [codeByLanguage, setCodeByLanguage] = useState({});
+
+  // Complexity
   const [complexity, setComplexity] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  // Mobile: which panel is active — "editor" | "input" | "output"
-  const [mobilePanel, setMobilePanel] = useState("editor");
 
+  // UI panels
+  const [mobilePanel, setMobilePanel] = useState("editor");
+  const [showSettings, setShowSettings] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
+
+  // Status bar
+  const [cursorPosition, setCursorPosition] = useState({ line: 1, col: 1 });
+
+  // Refs
   const lastAnalyzedRef = useRef({ code: null, language: null, result: null });
   const isPrefsLoaded = useRef(false);
   const autoSaveTimer = useRef(null);
   const themeRef = useRef(theme);
 
-  const analyzeComplexity = useCallback(async () => {
-    const cached = lastAnalyzedRef.current;
-    if (cached.code === code && cached.language === language && cached.result) {
-      setIsAnalyzing(true);
-      await new Promise((r) => setTimeout(r, 600));
-      setComplexity(cached.result);
-      setIsAnalyzing(false);
-      return;
-    }
-    setIsAnalyzing(true);
-    setComplexity(null);
-    try {
-      const { data } = await api.post("/analyze-complexity", {
-        code,
-        language,
-      });
-      setComplexity(data);
-      lastAnalyzedRef.current = { code, language, result: data };
-    } catch {
-      setComplexity({ time: "?", space: "?", reason: "Analysis failed." });
-    }
-    setIsAnalyzing(false);
-  }, [code, language]);
+  // ── Computed ──
+  const lineCount = code ? code.split("\n").length : 0;
+  const charCount = code ? code.length : 0;
 
-  useEffect(
-    () => () => {
-      if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
-    },
-    [],
-  );
+  // ── Theme ──
+  useEffect(() => {
+    themeRef.current = theme;
+  }, [theme]);
+  useEffect(() => {
+    if (monaco) loadTheme(monaco, theme);
+  }, [theme, monaco]);
 
+  // ── Load preferences ──
   useEffect(() => {
     const prefs = localStorage.getItem("editorPrefs");
     if (prefs) {
@@ -206,13 +566,24 @@ export default function Editor() {
     }, 0);
   }, []);
 
+  // ── Save preferences ──
   useEffect(() => {
-    themeRef.current = theme;
-  }, [theme]);
-  useEffect(() => {
-    if (monaco) loadTheme(monaco, theme);
-  }, [theme, monaco]);
+    if (!isPrefsLoaded.current) return;
+    localStorage.setItem(
+      "editorPrefs",
+      JSON.stringify({
+        fontSize,
+        tabSize,
+        wordWrap,
+        minimap,
+        ligatures,
+        theme,
+        font: fontFamily,
+      }),
+    );
+  }, [fontSize, tabSize, wordWrap, minimap, ligatures, theme, fontFamily]);
 
+  // ── Load session ──
   useEffect(() => {
     const controller = new AbortController();
     api
@@ -232,26 +603,18 @@ export default function Editor() {
         navigate("/dashboard");
       })
       .finally(() => setIsLoadingSession(false));
-
     return () => controller.abort();
   }, [roomId]);
 
-  useEffect(() => {
-    if (!isPrefsLoaded.current) return;
-    localStorage.setItem(
-      "editorPrefs",
-      JSON.stringify({
-        fontSize,
-        tabSize,
-        wordWrap,
-        minimap,
-        ligatures,
-        theme,
-        font: fontFamily,
-      }),
-    );
-  }, [fontSize, tabSize, wordWrap, minimap, ligatures, theme, fontFamily]);
+  // ── Cleanup ──
+  useEffect(
+    () => () => {
+      if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    },
+    [],
+  );
 
+  // ── Save session ──
   const saveSession = useCallback(
     async (currentCode = code) => {
       setIsSaving(true);
@@ -270,55 +633,41 @@ export default function Editor() {
     [code, language, title, roomId],
   );
 
+  // ── Handle code change ──
   const handleCodeChange = (value) => {
     setCode(value);
     clearTimeout(autoSaveTimer.current);
     autoSaveTimer.current = setTimeout(() => saveSession(value), 2000);
   };
 
+  // ── Actions ──
   const handleCopy = useCallback(() => {
     navigator.clipboard.writeText(code);
     toast.success("Copied! 📋");
   }, [code]);
 
-  const handleDownload = useCallback(() => {
-    const ext = {
-      javascript: "js",
-      typescript: "ts",
-      python: "py",
-      cpp: "cpp",
-      c: "c",
-      java: "java",
-      go: "go",
-      ruby: "rb",
-      php: "php",
-      csharp: "cs",
-      swift: "swift",
-      kotlin: "kt",
-      rust: "rs",
-      scala: "scala",
-      r: "r",
-      dart: "dart",
-      haskell: "hs",
-      lua: "lua",
-      groovy: "groovy",
-      sql: "sql",
-      bash: "sh",
-    };
+  const handleCopyOutput = useCallback(() => {
+    if (output?.text) {
+      navigator.clipboard.writeText(output.text);
+      toast.success("Output copied! 📋");
+    }
+  }, [output]);
 
+  const handleDownload = useCallback(() => {
     const blob = new Blob([code], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${title}.${ext[language] || "txt"}`;
+    a.download = `${title}.${LANG_EXT[language] || "txt"}`;
     a.click();
+    URL.revokeObjectURL(url);
     toast.success("Downloaded! 💾");
   }, [code, title, language]);
 
   const handleRun = useCallback(async () => {
     setIsRunning(true);
-    setOutput({ status: "running", text: "Running..." });
-    // Switch to output panel on mobile when run is triggered
+    setExecutionTime(null);
+    setOutput({ status: "running", text: "Running your code…" });
     setMobilePanel("output");
 
     const langMap = {
@@ -344,20 +693,25 @@ export default function Editor() {
       sql: 82,
       bash: 46,
     };
+
     const langId = langMap[language];
     if (!langId) {
-      setOutput({ status: "error", text: `${language} not supported yet` });
+      setOutput({ status: "error", text: `${language} is not supported yet.` });
       setIsRunning(false);
       return;
     }
-    const cacheKey = `${language}__${btoa(code)}__${btoa(userInput || "")}`;
+
+    const cacheKey = `${language}__${btoa(unescape(encodeURIComponent(code)))}__${btoa(unescape(encodeURIComponent(userInput || "")))}`;
     const storedCache = JSON.parse(localStorage.getItem("runCache") || "{}");
     if (storedCache[cacheKey]) {
-      await new Promise((r) => setTimeout(r, 400));
-      setOutput(storedCache[cacheKey]);
+      await new Promise((r) => setTimeout(r, 300));
+      setOutput(storedCache[cacheKey].output);
+      setExecutionTime(storedCache[cacheKey].time ?? null);
       setIsRunning(false);
       return;
     }
+
+    const startTime = Date.now();
     try {
       const res = await fetch(
         "https://ce.judge0.com/submissions?base64_encoded=true&wait=true",
@@ -372,6 +726,9 @@ export default function Editor() {
         },
       );
       const result = await res.json();
+      const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
+      setExecutionTime(elapsed);
+
       const decode = (str) => {
         try {
           return str ? decodeURIComponent(escape(atob(str))) : "";
@@ -379,6 +736,7 @@ export default function Editor() {
           return str;
         }
       };
+
       const outputText = decode(
         result.compile_output ||
           result.stderr ||
@@ -388,19 +746,48 @@ export default function Editor() {
       );
       const finalOutput = {
         status: result.status?.id === 3 ? "success" : "error",
-        text: `${result.status?.description}\n\n${outputText}`,
+        text: outputText.trim(),
+        statusLabel: result.status?.description || "",
       };
+
       setOutput(finalOutput);
-      storedCache[cacheKey] = finalOutput;
+
       const keys = Object.keys(storedCache);
       if (keys.length > 50) delete storedCache[keys[0]];
+      storedCache[cacheKey] = { output: finalOutput, time: elapsed };
       localStorage.setItem("runCache", JSON.stringify(storedCache));
     } catch {
-      setOutput({ status: "error", text: "Failed to run code." });
+      setOutput({ status: "error", text: "Failed to connect to code runner." });
     }
     setIsRunning(false);
   }, [code, language, userInput]);
 
+  // ── Complexity ──
+  const analyzeComplexity = useCallback(async () => {
+    const cached = lastAnalyzedRef.current;
+    if (cached.code === code && cached.language === language && cached.result) {
+      setIsAnalyzing(true);
+      await new Promise((r) => setTimeout(r, 400));
+      setComplexity(cached.result);
+      setIsAnalyzing(false);
+      return;
+    }
+    setIsAnalyzing(true);
+    setComplexity(null);
+    try {
+      const { data } = await api.post("/analyze-complexity", {
+        code,
+        language,
+      });
+      setComplexity(data);
+      lastAnalyzedRef.current = { code, language, result: data };
+    } catch {
+      setComplexity({ time: "?", space: "?", reason: "Analysis failed." });
+    }
+    setIsAnalyzing(false);
+  }, [code, language]);
+
+  // ── Keyboard shortcuts ──
   useEffect(() => {
     const handleKeyDown = (e) => {
       const isCtrl = e.ctrlKey || e.metaKey;
@@ -415,14 +802,22 @@ export default function Editor() {
       }
       if (e.key === "Escape") {
         e.preventDefault();
+        if (showShortcuts) {
+          setShowShortcuts(false);
+          return;
+        }
+        if (showSettings) {
+          setShowSettings(false);
+          return;
+        }
         if (output) {
           setOutput(null);
           setMobilePanel("editor");
-        } else {
-          saveSession();
-          toast.success("Saved! ✅");
-          navigate("/dashboard");
+          return;
         }
+        saveSession();
+        toast.success("Saved! ✅");
+        navigate("/dashboard");
       }
       if (isCtrl && e.key.toLowerCase() === "d") {
         e.preventDefault();
@@ -440,11 +835,39 @@ export default function Editor() {
         e.preventDefault();
         setFontSize((p) => Math.max(p - 2, 10));
       }
+      if (isCtrl && e.key === "?") {
+        e.preventDefault();
+        setShowShortcuts((v) => !v);
+      }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [saveSession, handleRun, handleCopy, handleDownload, output, navigate]);
+  }, [
+    saveSession,
+    handleRun,
+    handleCopy,
+    handleDownload,
+    output,
+    navigate,
+    showShortcuts,
+    showSettings,
+  ]);
 
+  // ── Monaco cursor tracking ──
+  const handleEditorMount = (editor, monacoInstance) => {
+    editorRef.current = editor;
+    loadTheme(monacoInstance, themeRef.current);
+    editor.onDidChangeCursorPosition((e) => {
+      setCursorPosition({
+        line: e.position.lineNumber,
+        col: e.position.column,
+      });
+    });
+  };
+
+  // ─────────────────────────────────────────────
+  // Render
+  // ─────────────────────────────────────────────
   return (
     <div
       className="flex flex-col bg-gray-950 text-gray-200"
@@ -476,12 +899,12 @@ export default function Editor() {
                 saveSession();
               }}
               onKeyDown={(e) => e.key === "Enter" && setIsEditingTitle(false)}
-              className="bg-gray-700 text-white px-2 py-1 rounded text-sm outline-none focus:ring-2 focus:ring-green-500 max-w-35 sm:max-w-xs"
+              className="bg-gray-700 text-white px-2 py-1 rounded text-sm outline-none focus:ring-2 focus:ring-green-500 max-w-[8rem] sm:max-w-xs"
             />
           ) : (
             <span
               onClick={() => setIsEditingTitle(true)}
-              className="text-sm text-gray-300 cursor-pointer hover:text-white truncate max-w-30 sm:max-w-xs"
+              className="text-sm text-gray-300 cursor-pointer hover:text-white truncate max-w-[7.5rem] sm:max-w-xs"
               title="Click to rename"
             >
               {title} ✏️
@@ -492,16 +915,14 @@ export default function Editor() {
         {/* Center: language + font size */}
         <div className="flex items-center gap-1.5">
           <select
-            value={language}
+            value={language ?? "javascript"}
             onChange={(e) => {
               const newLang = e.target.value;
-              const savedCode =
-                codeByLanguage[newLang] || LANGUAGE_TEMPLATES[newLang];
               setCodeByLanguage((prev) => ({ ...prev, [language]: code }));
-              setCode(savedCode);
+              setCode(codeByLanguage[newLang] || LANGUAGE_TEMPLATES[newLang]);
               setLanguage(newLang);
             }}
-            className="bg-gray-700 text-white text-xs px-2 py-1.5 rounded-lg outline-none max-w-27.5"
+            className="bg-gray-700 text-white text-xs px-2 py-1.5 rounded-lg outline-none max-w-[7rem]"
           >
             {LANGUAGES.map((l) => (
               <option key={l} value={l}>
@@ -524,9 +945,10 @@ export default function Editor() {
 
         {/* Right: action buttons */}
         <div className="flex items-center gap-1.5 flex-wrap">
-          {/* Copy — icon only on very small screens */}
+          {/* Copy */}
           <button
             onClick={handleCopy}
+            title="Copy code (Ctrl+Shift+C)"
             className="bg-gray-800 border border-gray-700 hover:bg-gray-700 hover:border-green-500 text-xs px-3 py-1.5 rounded-xl font-medium transition-all hidden sm:flex items-center gap-1"
           >
             📋 <span className="hidden md:inline">Copy</span>
@@ -538,8 +960,10 @@ export default function Editor() {
             📋
           </button>
 
+          {/* Download */}
           <button
             onClick={handleDownload}
+            title="Download (Ctrl+D)"
             className="bg-gray-800 border border-gray-700 hover:bg-gray-700 hover:border-green-500 text-xs px-3 py-1.5 rounded-xl font-medium transition-all hidden sm:flex items-center gap-1"
           >
             ⬇️ <span className="hidden md:inline">Download</span>
@@ -551,9 +975,11 @@ export default function Editor() {
             ⬇️
           </button>
 
+          {/* Complexity */}
           <button
             onClick={analyzeComplexity}
             disabled={isAnalyzing}
+            title="Analyze complexity"
             className="bg-purple-700 hover:bg-purple-600 disabled:opacity-50 text-xs px-3 py-1.5 rounded-xl font-medium transition hidden sm:flex items-center gap-1"
           >
             📊{" "}
@@ -569,6 +995,25 @@ export default function Editor() {
             📊
           </button>
 
+          {/* Shortcuts */}
+          <button
+            onClick={() => setShowShortcuts(true)}
+            title="Keyboard shortcuts (Ctrl+?)"
+            className="bg-gray-800 border border-gray-700 hover:bg-gray-700 hover:border-blue-500 text-xs px-2 py-1.5 rounded-xl font-medium transition hidden sm:flex items-center"
+          >
+            ⌨️
+          </button>
+
+          {/* Settings */}
+          <button
+            onClick={() => setShowSettings(true)}
+            title="Editor settings"
+            className="bg-gray-800 border border-gray-700 hover:bg-gray-700 hover:border-blue-500 text-xs px-2 py-1.5 rounded-xl font-medium transition hidden sm:flex items-center"
+          >
+            ⚙️
+          </button>
+
+          {/* Save */}
           <button
             onClick={async () => {
               await saveSession();
@@ -583,6 +1028,7 @@ export default function Editor() {
             </span>
           </button>
 
+          {/* Run */}
           <button
             onClick={handleRun}
             disabled={isRunning}
@@ -598,156 +1044,248 @@ export default function Editor() {
 
       {/* ── COMPLEXITY BAR ── */}
       {complexity && (
-        <div className="shrink-0 flex flex-wrap items-center gap-3 px-4 py-2.5 bg-gray-900 border-b border-purple-800 text-sm">
+        <div className="shrink-0 flex flex-wrap items-center gap-3 px-4 py-2.5 bg-gray-900 border-b border-purple-800/60 text-sm">
           <span className="text-gray-400 font-semibold">⏱ Time:</span>
           <span
             className={`font-mono font-bold ${COMPLEXITY_COLOR[complexity.time] ?? "text-white"}`}
           >
             {complexity.time}
           </span>
-          <span className="text-gray-600">|</span>
+          <span className="text-gray-700">|</span>
           <span className="text-gray-400 font-semibold">🧠 Space:</span>
           <span
             className={`font-mono font-bold ${COMPLEXITY_COLOR[complexity.space] ?? "text-white"}`}
           >
             {complexity.space}
           </span>
-          <span className="text-gray-600 hidden sm:inline">|</span>
-          <span className="text-gray-400 italic text-xs sm:text-sm wrap-break-word flex-1 min-w-0">
+          <span className="text-gray-700 hidden sm:inline">|</span>
+          <span className="text-gray-400 italic text-xs sm:text-sm flex-1 min-w-0 break-words">
             {complexity.reason}
           </span>
           <button
             onClick={() => setComplexity(null)}
-            className="ml-auto shrink-0 text-gray-500 hover:text-white text-base"
+            className="ml-auto shrink-0 text-gray-500 hover:text-white"
           >
             ✕
           </button>
         </div>
       )}
 
-      {/* ── MOBILE PANEL TABS (only when output exists) ── */}
-      {output && (
-        <div className="shrink-0 flex border-b border-gray-800 bg-gray-900 md:hidden">
-          {["editor", "input", "output"].map((panel) => (
-            <button
-              key={panel}
-              onClick={() => setMobilePanel(panel)}
-              className={`flex-1 py-2 text-xs font-medium capitalize transition-all border-b-2 ${
-                mobilePanel === panel
-                  ? "border-green-500 text-green-400"
-                  : "border-transparent text-gray-500 hover:text-gray-300"
-              }`}
-            >
-              {panel === "editor"
-                ? "📝 Editor"
-                : panel === "input"
-                  ? "📥 Input"
-                  : "📤 Output"}
-            </button>
-          ))}
-        </div>
-      )}
+      {/* ── MOBILE PANEL TABS (always visible on mobile) ── */}
+      <div className="shrink-0 flex border-b border-gray-800 bg-gray-900 md:hidden">
+        {["editor", "input", "output"].map((panel) => (
+          <button
+            key={panel}
+            onClick={() => setMobilePanel(panel)}
+            className={`flex-1 py-2 text-xs font-medium capitalize transition-all border-b-2 ${
+              mobilePanel === panel
+                ? "border-green-500 text-green-400"
+                : "border-transparent text-gray-500 hover:text-gray-300"
+            }`}
+          >
+            {panel === "editor"
+              ? "📝 Editor"
+              : panel === "input"
+                ? "📥 Input"
+                : "📤 Output"}
+          </button>
+        ))}
+      </div>
 
       {/* ── MAIN CONTENT ── */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
-        {/* ── DESKTOP: Editor ── */}
+        {/* Editor panel */}
         <div
           className={`
             min-h-0 min-w-0 overflow-hidden
-            ${output ? "hidden md:flex md:flex-1" : "flex flex-1"}
-            ${output ? "md:w-1/2 lg:w-[55%]" : ""}
-            ${output && mobilePanel === "editor" ? "flex! flex-1 md:flex" : ""}
+            ${output ? "hidden md:flex md:flex-1 md:w-1/2 lg:w-[55%]" : "flex flex-1"}
+            ${mobilePanel === "editor" ? "!flex flex-1 md:flex" : ""}
           `}
-          style={output ? {} : {}}
         >
           <div className="w-full h-full">
-            <MonacoEditor
-              height="100%"
-              language={language}
-              value={code}
-              onChange={handleCodeChange}
-              onMount={(_editor, monacoInstance) =>
-                loadTheme(monacoInstance, themeRef.current)
-              }
-              options={{
-                fontSize,
-                tabSize,
-                minimap: { enabled: minimap },
-                scrollBeyondLastLine: false,
-                automaticLayout: true,
-                wordWrap: wordWrap ? "on" : "off",
-                fontFamily,
-                fontLigatures: ligatures,
-              }}
-            />
+            {isLoadingSession ? (
+              <LoadingSkeleton />
+            ) : (
+              <MonacoEditor
+                height="100%"
+                language={language}
+                value={code}
+                onChange={handleCodeChange}
+                onMount={handleEditorMount}
+                options={{
+                  fontSize,
+                  tabSize,
+                  minimap: { enabled: minimap },
+                  scrollBeyondLastLine: false,
+                  automaticLayout: true,
+                  wordWrap: wordWrap ? "on" : "off",
+                  fontFamily,
+                  fontLigatures: ligatures,
+                  smoothScrolling: true,
+                  cursorBlinking: "smooth",
+                  cursorSmoothCaretAnimation: "on",
+                  renderLineHighlight: "all",
+                  bracketPairColorization: { enabled: true },
+                  guides: { bracketPairs: true },
+                  padding: { top: 12, bottom: 12 },
+                }}
+              />
+            )}
           </div>
         </div>
 
-        {/* ── DESKTOP: Input + Output panels side by side | Mobile: separate tabs ── */}
-        {output && (
-          <>
-            {/* Custom Input */}
-            <div
-              className={`
-                border-gray-800 bg-gray-950 flex flex-col
-                flex-1 min-h-0 min-w-0
-                md:flex md:w-[22%] lg:w-[20%] md:flex-none md:border-l
-                ${mobilePanel === "input" ? "flex" : "hidden md:flex"}
-              `}
-            >
-              <div className="shrink-0 px-4 py-2.5 bg-gray-900 border-b border-gray-800 text-xs font-semibold text-gray-300 tracking-wide">
-                📥 Custom Input
-              </div>
-              <textarea
-                value={userInput}
-                onChange={(e) => setUserInput(e.target.value)}
-                placeholder="Enter input here..."
-                className="flex-1 bg-gray-950 text-gray-200 p-4 text-sm font-mono outline-none resize-none min-h-0"
-              />
+        {/* Input panel */}
+        <div
+          className={`
+            border-gray-800 bg-gray-950 flex flex-col flex-1 min-h-0 min-w-0
+            md:flex md:w-[22%] lg:w-[20%] md:flex-none md:border-l
+            ${mobilePanel === "input" ? "flex" : "hidden md:flex"}
+          `}
+        >
+          <div className="shrink-0 px-4 py-2.5 bg-gray-900 border-b border-gray-800 text-xs font-semibold text-gray-300 tracking-wide">
+            📥 Custom Input
+          </div>
+          <textarea
+            value={userInput}
+            onChange={(e) => setUserInput(e.target.value)}
+            placeholder="Provide stdin input here…"
+            spellCheck={false}
+            className="flex-1 bg-gray-950 text-gray-200 p-4 text-sm font-mono outline-none resize-none min-h-0 placeholder-gray-700"
+          />
+          {userInput && (
+            <div className="shrink-0 px-3 py-2 border-t border-gray-800 flex justify-end">
+              <button
+                onClick={() => setUserInput("")}
+                className="text-xs text-gray-500 hover:text-red-400 transition-colors"
+              >
+                Clear ✕
+              </button>
             </div>
+          )}
+        </div>
 
-            {/* Output */}
-            <div
-              className={`
-                border-gray-800 bg-gray-950 flex flex-col
-                flex-1 min-h-0 min-w-0
-                md:flex md:w-[28%] lg:w-[25%] md:flex-none md:border-l
-                ${mobilePanel === "output" ? "flex" : "hidden md:flex"}
-              `}
-            >
-              <div className="shrink-0 flex justify-between items-center px-4 py-2.5 bg-gray-900 border-b border-gray-800 text-xs font-semibold">
-                <span
-                  className={
-                    output.status === "error"
+        {/* Output panel */}
+        <div
+          className={`
+            border-gray-800 bg-gray-950 flex flex-col flex-1 min-h-0 min-w-0
+            md:flex md:w-[28%] lg:w-[25%] md:flex-none md:border-l
+            ${mobilePanel === "output" ? "flex" : "hidden md:flex"}
+          `}
+        >
+          <div className="shrink-0 flex justify-between items-center px-4 py-2.5 bg-gray-900 border-b border-gray-800 text-xs font-semibold">
+            <div className="flex items-center gap-2">
+              <span
+                className={
+                  !output
+                    ? "text-gray-500"
+                    : output.status === "error"
                       ? "text-red-400"
                       : output.status === "running"
-                        ? "text-yellow-400"
+                        ? "text-yellow-400 animate-pulse"
                         : "text-green-400"
-                  }
-                >
-                  {output.status === "error"
+                }
+              >
+                {!output
+                  ? "📤 Output"
+                  : output.status === "error"
                     ? "❌ Error"
                     : output.status === "running"
-                      ? "⏳ Running..."
+                      ? "⏳ Running…"
                       : "✅ Output"}
+              </span>
+              {executionTime && output?.status !== "running" && (
+                <span className="text-gray-600 font-normal">
+                  {executionTime}s
                 </span>
+              )}
+              {output?.statusLabel && output.status !== "running" && (
+                <span className="text-gray-600 font-normal hidden lg:inline">
+                  · {output.statusLabel}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {output?.text && (
+                <button
+                  onClick={handleCopyOutput}
+                  title="Copy output"
+                  className="text-gray-500 hover:text-white transition-colors text-xs"
+                >
+                  📋
+                </button>
+              )}
+              {output && (
                 <button
                   onClick={() => {
                     setOutput(null);
                     setMobilePanel("editor");
+                    setExecutionTime(null);
                   }}
-                  className="text-gray-400 hover:text-white text-base leading-none"
+                  className="text-gray-400 hover:text-white transition-colors text-base leading-none"
                 >
                   ✕
                 </button>
-              </div>
-              <pre className="flex-1 overflow-auto p-4 text-xs sm:text-sm text-gray-200 font-mono leading-relaxed whitespace-pre-wrap wrap-break-word">
-                {output.text}
-              </pre>
+              )}
             </div>
-          </>
-        )}
+          </div>
+
+          {output ? (
+            <pre className="flex-1 overflow-auto p-4 text-xs sm:text-sm text-gray-200 font-mono leading-relaxed whitespace-pre-wrap break-words">
+              {output.text || (
+                <span className="text-gray-600 italic">No output</span>
+              )}
+            </pre>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center text-center px-6 gap-3">
+              <div className="text-4xl opacity-20">▶</div>
+              <p className="text-gray-600 text-xs">
+                Run your code to see output here.
+                <br />
+                <span className="text-gray-700">Ctrl + Enter</span>
+              </p>
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* ── STATUS BAR ── */}
+      {!isLoadingSession && (
+        <StatusBar
+          language={language ?? ""}
+          cursorPosition={cursorPosition}
+          lineCount={lineCount}
+          charCount={charCount}
+          isSaving={isSaving}
+          wordWrap={wordWrap}
+          tabSize={tabSize}
+        />
+      )}
+
+      {/* ── SETTINGS DRAWER ── */}
+      <SettingsDrawer
+        open={showSettings}
+        onClose={() => setShowSettings(false)}
+        theme={theme}
+        setTheme={setTheme}
+        fontSize={fontSize}
+        setFontSize={setFontSize}
+        fontFamily={fontFamily}
+        setFontFamily={setFontFamily}
+        tabSize={tabSize}
+        setTabSize={setTabSize}
+        wordWrap={wordWrap}
+        setWordWrap={setWordWrap}
+        minimap={minimap}
+        setMinimap={setMinimap}
+        ligatures={ligatures}
+        setLigatures={setLigatures}
+      />
+
+      {/* ── SHORTCUTS MODAL ── */}
+      <ShortcutsModal
+        open={showShortcuts}
+        onClose={() => setShowShortcuts(false)}
+      />
     </div>
   );
 }
