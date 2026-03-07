@@ -54,6 +54,15 @@ const LANGUAGE_TEMPLATES = {
 
 const FONT_SIZES = [12, 14, 16, 18, 20, 22, 24];
 
+const FONT_FAMILIES = [
+  "Fira Code",
+  "JetBrains Mono",
+  "Cascadia Code",
+  "Source Code Pro",
+  "Inconsolata",
+  "monospace",
+];
+
 export const THEME_FILE_MAP = {
   Active4D: "Active4D",
   Amy: "Amy",
@@ -125,6 +134,258 @@ const COMPLEXITY_COLOR = {
   "O(n!)": "text-pink-600",
 };
 
+// ── Settings Drawer ───────────────────────────────────────────────────────────
+function SettingsDrawer({
+  open,
+  onClose,
+  theme,
+  setTheme,
+  fontSize,
+  setFontSize,
+  fontFamily,
+  setFontFamily,
+  tabSize,
+  setTabSize,
+  wordWrap,
+  setWordWrap,
+  minimap,
+  setMinimap,
+  ligatures,
+  setLigatures,
+}) {
+  const ALL_THEMES = {
+    "Built-in": ["vs-dark", "light", "hc-black"],
+    Custom: Object.keys(THEME_FILE_MAP),
+  };
+
+  return (
+    <>
+      {/* Backdrop */}
+      {open && (
+        <div className="fixed inset-0 z-40 bg-black/40" onClick={onClose} />
+      )}
+
+      {/* Drawer */}
+      <div
+        className={`fixed top-0 right-0 z-50 h-full w-72 bg-gray-900 border-l border-gray-700 shadow-2xl flex flex-col transition-transform duration-200 ${
+          open ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
+          <span className="text-sm font-semibold text-gray-200">
+            ⚙️ Editor Settings
+          </span>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-white transition-colors text-lg leading-none"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5">
+          {/* Theme */}
+          <div>
+            <label className="block text-xs text-gray-400 font-semibold mb-2 uppercase tracking-wider">
+              Theme
+            </label>
+            {Object.entries(ALL_THEMES).map(([group, themes]) => (
+              <div key={group} className="mb-3">
+                <div className="text-xs text-gray-600 mb-1.5">{group}</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {themes.map((t) => (
+                    <button
+                      key={t}
+                      onClick={() => setTheme(t)}
+                      className={`text-[10px] px-2 py-1 rounded-md transition-all border ${
+                        theme === t
+                          ? "bg-blue-600 border-blue-500 text-white"
+                          : "bg-gray-800 border-gray-700 text-gray-300 hover:border-gray-500"
+                      }`}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Font Family */}
+          <div>
+            <label className="block text-xs text-gray-400 font-semibold mb-2 uppercase tracking-wider">
+              Font Family
+            </label>
+            <select
+              value={fontFamily}
+              onChange={(e) => setFontFamily(e.target.value)}
+              className="w-full bg-gray-800 border border-gray-700 text-white text-sm px-3 py-2 rounded-lg outline-none focus:border-blue-500"
+            >
+              {FONT_FAMILIES.map((f) => (
+                <option key={f} value={f}>
+                  {f}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Font Size */}
+          <div>
+            <label className="block text-xs text-gray-400 font-semibold mb-2 uppercase tracking-wider">
+              Font Size — <span className="text-blue-400">{fontSize}px</span>
+            </label>
+            <input
+              type="range"
+              min={10}
+              max={24}
+              step={2}
+              value={fontSize}
+              onChange={(e) => setFontSize(Number(e.target.value))}
+              className="w-full accent-blue-500"
+            />
+            <div className="flex justify-between text-xs text-gray-600 mt-1">
+              <span>10px</span>
+              <span>24px</span>
+            </div>
+          </div>
+
+          {/* Tab Size */}
+          <div>
+            <label className="block text-xs text-gray-400 font-semibold mb-2 uppercase tracking-wider">
+              Tab Size
+            </label>
+            <div className="flex gap-2">
+              {[2, 4, 8].map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setTabSize(s)}
+                  className={`flex-1 py-1.5 text-sm rounded-lg border transition-all ${
+                    tabSize === s
+                      ? "bg-blue-600 border-blue-500 text-white"
+                      : "bg-gray-800 border-gray-700 text-gray-300 hover:border-gray-500"
+                  }`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Toggles */}
+          <div>
+            <label className="block text-xs text-gray-400 font-semibold mb-3 uppercase tracking-wider">
+              Options
+            </label>
+            <div className="space-y-3">
+              {[
+                {
+                  label: "Word Wrap",
+                  value: wordWrap,
+                  set: setWordWrap,
+                  desc: "Wrap long lines",
+                },
+                {
+                  label: "Minimap",
+                  value: minimap,
+                  set: setMinimap,
+                  desc: "Show code minimap",
+                },
+                {
+                  label: "Font Ligatures",
+                  value: ligatures,
+                  set: setLigatures,
+                  desc: "Enable ligatures",
+                },
+              ].map(({ label, value, set, desc }) => (
+                <div key={label} className="flex items-center justify-between">
+                  <div>
+                    <div className="text-sm text-gray-300">{label}</div>
+                    <div className="text-xs text-gray-600">{desc}</div>
+                  </div>
+                  <button
+                    onClick={() => set(!value)}
+                    className={`relative w-10 h-5 rounded-full transition-colors ${value ? "bg-blue-600" : "bg-gray-700"}`}
+                  >
+                    <span
+                      className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                        value ? "translate-x-5" : "translate-x-0.5"
+                      }`}
+                    />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="px-4 py-3 border-t border-gray-700 text-xs text-gray-600">
+          Settings are auto-saved to browser
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ── Shortcuts Modal ───────────────────────────────────────────────────────────
+function ShortcutsModal({ open, onClose }) {
+  if (!open) return null;
+
+  const shortcuts = [
+    { keys: ["Ctrl", "S"], action: "Save session" },
+    { keys: ["Ctrl", "Enter"], action: "Run code" },
+    { keys: ["Ctrl", "D"], action: "Download file" },
+    { keys: ["Ctrl", "⇧", "C"], action: "Copy code" },
+    { keys: ["Ctrl", "="], action: "Increase font size" },
+    { keys: ["Ctrl", "-"], action: "Decrease font size" },
+    { keys: ["Ctrl", "F"], action: "Find in editor" },
+    { keys: ["Ctrl", "H"], action: "Find & Replace" },
+    { keys: ["Ctrl", "Z"], action: "Undo" },
+    { keys: ["Ctrl", "⇧", "Z"], action: "Redo" },
+    { keys: ["Ctrl", "/"], action: "Toggle comment" },
+    { keys: ["Esc"], action: "Close output / Go back" },
+  ];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-700">
+          <span className="font-semibold text-gray-200 text-sm">
+            ⌨️ Keyboard Shortcuts
+          </span>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-white text-lg leading-none"
+          >
+            ✕
+          </button>
+        </div>
+        <div className="px-5 py-3 space-y-1 max-h-96 overflow-y-auto">
+          {shortcuts.map(({ keys, action }) => (
+            <div
+              key={action}
+              className="flex items-center justify-between py-1.5 border-b border-gray-800 last:border-0"
+            >
+              <span className="text-sm text-gray-300">{action}</span>
+              <div className="flex items-center gap-1">
+                {keys.map((k) => (
+                  <kbd
+                    key={k}
+                    className="px-1.5 py-0.5 bg-gray-800 border border-gray-600 rounded text-xs text-gray-200 font-mono"
+                  >
+                    {k}
+                  </kbd>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Main Editor ───────────────────────────────────────────────────────────────
 export default function Editor() {
   const monaco = useMonaco();
   const { roomId } = useParams();
@@ -132,7 +393,7 @@ export default function Editor() {
 
   const [code, setCode] = useState(null);
   const [language, setLanguage] = useState(null);
-  const [isLoadingSession, setIsLoadingSession] = useState(true); // ← add this
+  const [isLoadingSession, setIsLoadingSession] = useState(true);
 
   const [theme, setTheme] = useState("vs-dark");
   const [fontSize, setFontSize] = useState(14);
@@ -150,8 +411,11 @@ export default function Editor() {
   const [fontFamily, setFontFamily] = useState("Fira Code");
   const [complexity, setComplexity] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  // Mobile: which panel is active — "editor" | "input" | "output"
   const [mobilePanel, setMobilePanel] = useState("editor");
+
+  // NEW: settings & shortcuts visibility
+  const [showSettings, setShowSettings] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
 
   const lastAnalyzedRef = useRef({ code: null, language: null, result: null });
   const isPrefsLoaded = useRef(false);
@@ -232,7 +496,6 @@ export default function Editor() {
         navigate("/dashboard");
       })
       .finally(() => setIsLoadingSession(false));
-
     return () => controller.abort();
   }, [roomId]);
 
@@ -305,7 +568,6 @@ export default function Editor() {
       sql: "sql",
       bash: "sh",
     };
-
     const blob = new Blob([code], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -318,7 +580,6 @@ export default function Editor() {
   const handleRun = useCallback(async () => {
     setIsRunning(true);
     setOutput({ status: "running", text: "Running..." });
-    // Switch to output panel on mobile when run is triggered
     setMobilePanel("output");
 
     const langMap = {
@@ -415,6 +676,15 @@ export default function Editor() {
       }
       if (e.key === "Escape") {
         e.preventDefault();
+        // Close modals/drawer first before anything else
+        if (showShortcuts) {
+          setShowShortcuts(false);
+          return;
+        }
+        if (showSettings) {
+          setShowSettings(false);
+          return;
+        }
         if (output) {
           setOutput(null);
           setMobilePanel("editor");
@@ -443,7 +713,16 @@ export default function Editor() {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [saveSession, handleRun, handleCopy, handleDownload, output, navigate]);
+  }, [
+    saveSession,
+    handleRun,
+    handleCopy,
+    handleDownload,
+    output,
+    navigate,
+    showShortcuts,
+    showSettings,
+  ]);
 
   return (
     <div
@@ -524,7 +803,7 @@ export default function Editor() {
 
         {/* Right: action buttons */}
         <div className="flex items-center gap-1.5 flex-wrap">
-          {/* Copy — icon only on very small screens */}
+          {/* Copy */}
           <button
             onClick={handleCopy}
             className="bg-gray-800 border border-gray-700 hover:bg-gray-700 hover:border-green-500 text-xs px-3 py-1.5 rounded-xl font-medium transition-all hidden sm:flex items-center gap-1"
@@ -538,6 +817,7 @@ export default function Editor() {
             📋
           </button>
 
+          {/* Download */}
           <button
             onClick={handleDownload}
             className="bg-gray-800 border border-gray-700 hover:bg-gray-700 hover:border-green-500 text-xs px-3 py-1.5 rounded-xl font-medium transition-all hidden sm:flex items-center gap-1"
@@ -551,6 +831,7 @@ export default function Editor() {
             ⬇️
           </button>
 
+          {/* Complexity */}
           <button
             onClick={analyzeComplexity}
             disabled={isAnalyzing}
@@ -569,6 +850,37 @@ export default function Editor() {
             📊
           </button>
 
+          {/* ── Shortcuts button (NEW) ── */}
+          <button
+            onClick={() => setShowShortcuts(true)}
+            title="Keyboard shortcuts"
+            className="bg-gray-800 border border-gray-700 hover:bg-gray-700 hover:border-green-500 text-xs px-3 py-1.5 rounded-xl font-medium transition-all hidden sm:flex items-center gap-1"
+          >
+            ⌨️ <span className="hidden lg:inline">Shortcuts</span>
+          </button>
+          <button
+            onClick={() => setShowShortcuts(true)}
+            className="bg-gray-800 border border-gray-700 hover:bg-gray-700 text-sm w-8 h-8 rounded-xl flex items-center justify-center sm:hidden"
+          >
+            ⌨️
+          </button>
+
+          {/* ── Settings button (NEW) ── */}
+          <button
+            onClick={() => setShowSettings(true)}
+            title="Editor settings"
+            className="bg-gray-800 border border-gray-700 hover:bg-gray-700 hover:border-green-500 text-xs px-3 py-1.5 rounded-xl font-medium transition-all hidden sm:flex items-center gap-1"
+          >
+            ⚙️ <span className="hidden lg:inline">Settings</span>
+          </button>
+          <button
+            onClick={() => setShowSettings(true)}
+            className="bg-gray-800 border border-gray-700 hover:bg-gray-700 text-sm w-8 h-8 rounded-xl flex items-center justify-center sm:hidden"
+          >
+            ⚙️
+          </button>
+
+          {/* Save */}
           <button
             onClick={async () => {
               await saveSession();
@@ -583,6 +895,7 @@ export default function Editor() {
             </span>
           </button>
 
+          {/* Run */}
           <button
             onClick={handleRun}
             disabled={isRunning}
@@ -650,7 +963,7 @@ export default function Editor() {
 
       {/* ── MAIN CONTENT ── */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
-        {/* ── DESKTOP: Editor ── */}
+        {/* Editor */}
         <div
           className={`
             min-h-0 min-w-0 overflow-hidden
@@ -658,32 +971,37 @@ export default function Editor() {
             ${output ? "md:w-1/2 lg:w-[55%]" : ""}
             ${output && mobilePanel === "editor" ? "flex! flex-1 md:flex" : ""}
           `}
-          style={output ? {} : {}}
         >
           <div className="w-full h-full">
-            <MonacoEditor
-              height="100%"
-              language={language}
-              value={code}
-              onChange={handleCodeChange}
-              onMount={(_editor, monacoInstance) =>
-                loadTheme(monacoInstance, themeRef.current)
-              }
-              options={{
-                fontSize,
-                tabSize,
-                minimap: { enabled: minimap },
-                scrollBeyondLastLine: false,
-                automaticLayout: true,
-                wordWrap: wordWrap ? "on" : "off",
-                fontFamily,
-                fontLigatures: ligatures,
-              }}
-            />
+            {isLoadingSession ? (
+              <div className="flex items-center justify-center h-full text-gray-500 text-sm">
+                Loading session…
+              </div>
+            ) : (
+              <MonacoEditor
+                height="100%"
+                language={language}
+                value={code}
+                onChange={handleCodeChange}
+                onMount={(_editor, monacoInstance) =>
+                  loadTheme(monacoInstance, themeRef.current)
+                }
+                options={{
+                  fontSize,
+                  tabSize,
+                  minimap: { enabled: minimap },
+                  scrollBeyondLastLine: false,
+                  automaticLayout: true,
+                  wordWrap: wordWrap ? "on" : "off",
+                  fontFamily,
+                  fontLigatures: ligatures,
+                }}
+              />
+            )}
           </div>
         </div>
 
-        {/* ── DESKTOP: Input + Output panels side by side | Mobile: separate tabs ── */}
+        {/* Input + Output panels */}
         {output && (
           <>
             {/* Custom Input */}
@@ -748,6 +1066,32 @@ export default function Editor() {
           </>
         )}
       </div>
+
+      {/* ── Settings Drawer (NEW) ── */}
+      <SettingsDrawer
+        open={showSettings}
+        onClose={() => setShowSettings(false)}
+        theme={theme}
+        setTheme={setTheme}
+        fontSize={fontSize}
+        setFontSize={setFontSize}
+        fontFamily={fontFamily}
+        setFontFamily={setFontFamily}
+        tabSize={tabSize}
+        setTabSize={setTabSize}
+        wordWrap={wordWrap}
+        setWordWrap={setWordWrap}
+        minimap={minimap}
+        setMinimap={setMinimap}
+        ligatures={ligatures}
+        setLigatures={setLigatures}
+      />
+
+      {/* ── Shortcuts Modal (NEW) ── */}
+      <ShortcutsModal
+        open={showShortcuts}
+        onClose={() => setShowShortcuts(false)}
+      />
     </div>
   );
 }
