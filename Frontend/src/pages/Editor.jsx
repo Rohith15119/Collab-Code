@@ -577,115 +577,88 @@ export default function Editor() {
     toast.success("Downloaded! 💾");
   }, [code, title, language]);
 
-  // Helper: write result to run cache (max 50 entries)
-  const cacheResult = (store, key, value) => {
-    const keys = Object.keys(store);
-    if (keys.length >= 50) delete store[keys[0]];
-    store[key] = value;
-    localStorage.setItem("runCache", JSON.stringify(store));
-  };
-
   const handleRun = useCallback(async () => {
     setIsRunning(true);
     setOutput({ status: "running", text: "Running..." });
     setMobilePanel("output");
 
-    // Piston runtime names — full list: https://emkc.org/api/v2/piston/runtimes
-    const pistonLang = {
-      javascript: "javascript",
-      typescript: "typescript",
-      python: "python",
-      cpp: "c++",
-      c: "c",
-      java: "java",
-      go: "go",
-      ruby: "ruby",
-      php: "php",
-      csharp: "csharp",
-      kotlin: "kotlin",
-      swift: "swift",
-      rust: "rust",
-      scala: "scala",
-      r: "r",
-      dart: "dart",
-      haskell: "haskell",
-      lua: "lua",
-      groovy: "groovy",
-      bash: "bash",
-      // sql: not supported by Piston
+    const langMap = {
+      javascript: 102,
+      typescript: 101,
+      python: 109,
+      cpp: 105,
+      c: 103,
+      java: 91,
+      go: 107,
+      ruby: 72,
+      php: 98,
+      csharp: 51,
+      kotlin: 111,
+      swift: 83,
+      rust: 108,
+      scala: 112,
+      r: 99,
+      dart: 90,
+      haskell: 61,
+      lua: 64,
+      groovy: 88,
+      sql: 82,
+      bash: 46,
     };
-
-    const runtimeName = pistonLang[language];
-    if (!runtimeName) {
-      setOutput({
-        status: "error",
-        text: `"${language}" is not supported by the code runner.`,
-      });
+    const langId = langMap[language];
+    if (!langId) {
+      setOutput({ status: "error", text: `${language} not supported yet` });
       setIsRunning(false);
       return;
     }
-
-    // Safe btoa that handles unicode
-    const safeBtoa = (str) => btoa(unescape(encodeURIComponent(str)));
-    const cacheKey = `piston__${language}__${safeBtoa(code)}__${safeBtoa(userInput || "")}`;
+    const cacheKey = `${language}__${btoa(code)}__${btoa(userInput || "")}`;
     const storedCache = JSON.parse(localStorage.getItem("runCache") || "{}");
     if (storedCache[cacheKey]) {
-      await new Promise((r) => setTimeout(r, 300));
+      await new Promise((r) => setTimeout(r, 400));
       setOutput(storedCache[cacheKey]);
       setIsRunning(false);
       return;
     }
-
     try {
-      const res = await fetch("https://emkc.org/api/v2/piston/execute", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          language: runtimeName,
-          version: "*", // always latest available
-          files: [{ content: code }],
-          stdin: userInput || "",
-        }),
-      });
-
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const res = await fetch(
+        "https://ce.judge0.com/submissions?base64_encoded=true&wait=true",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            source_code: btoa(unescape(encodeURIComponent(code))),
+            language_id: langId,
+            stdin: btoa(unescape(encodeURIComponent(userInput || ""))),
+          }),
+        },
+      );
       const result = await res.json();
-      const { run, compile } = result;
-
-      // Compile-time errors (Java, C++, Rust, etc.)
-      if (compile && compile.code !== 0 && compile.stderr) {
-        const finalOutput = {
-          status: "error",
-          text: `Compile Error\n\n${compile.stderr.trim()}`,
-        };
-        setOutput(finalOutput);
-        cacheResult(storedCache, cacheKey, finalOutput);
-        setIsRunning(false);
-        return;
-      }
-
-      const rawOutput = [run.stdout, run.stderr]
-        .filter(Boolean)
-        .join("\n")
-        .trim();
-      const timedOut = run.signal === "SIGKILL";
-
-      const finalOutput = {
-        status: run.code === 0 && !run.stderr ? "success" : "error",
-        text: timedOut
-          ? "⏱ Execution timed out (5s limit)"
-          : rawOutput || "(no output)",
+      const decode = (str) => {
+        try {
+          return str ? decodeURIComponent(escape(atob(str))) : "";
+        } catch {
+          return str;
+        }
       };
-
+      const outputText = decode(
+        result.compile_output ||
+          result.stderr ||
+          result.stdout ||
+          result.message ||
+          "",
+      );
+      const finalOutput = {
+        status: result.status?.id === 3 ? "success" : "error",
+        text: `${result.status?.description}\n\n${outputText}`,
+      };
       setOutput(finalOutput);
-      cacheResult(storedCache, cacheKey, finalOutput);
+      storedCache[cacheKey] = finalOutput;
+      const keys = Object.keys(storedCache);
+      if (keys.length > 50) delete storedCache[keys[0]];
+      localStorage.setItem("runCache", JSON.stringify(storedCache));
     } catch {
-      setOutput({
-        status: "error",
-        text: "Failed to connect to code runner.\nCheck your internet connection and try again.",
-      });
+      setOutput({ status: "error", text: "Failed to run code." });
     }
-
     setIsRunning(false);
   }, [code, language, userInput]);
 
