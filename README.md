@@ -161,14 +161,14 @@ Express Server  ──── server.js
 | Layer         | Technology                             |
 |---------------|----------------------------------------|
 | Frontend      | React.js, Vite                         |
-| Styling       | CSS                                    |
+| Styling       | TailWind CSS                           |
 | State/Context | React Context API                      |
 | HTTP Client   | Axios                                  |
 | Backend       | Node.js, Express.js                    |
 | Auth          | Passport.js, JWT                       |
 | Database      | MongoDB, Mongoose                      |
-| Email         | Nodemailer                             |
-| Deployment    | Vercel (Frontend), Node Host (Backend) |
+| Email         | Nodemailer, Resend                     |
+| Deployment    | Vercel (Frontend), Render (Backend)    |
 | Language      | JavaScript (99.7%)                     |
 
 ---
@@ -179,6 +179,7 @@ Express Server  ──── server.js
 
 - Node.js ≥ 16
 - MongoDB (local or Atlas)
+- PostreSql (superbase or any other)
 - npm or yarn
 
 ### 1. Clone the repository
@@ -199,11 +200,17 @@ Create a `.env` file in `/Backend`:
 
 ```env
 PORT=5000
-MONGO_URI=your_mongodb_connection_string
-JWT_SECRET=your_jwt_secret
-EMAIL_USER=your_email@example.com
-EMAIL_PASS=your_email_password
+DATABASE_URL=database_string
+JWT_SECRET==ur_secret
+MONGO_URL=mongo_db_atlas or mongo_db_local
+GOOGLE_CLIENT_ID=client_id
+GOOGLE_CLIENT_SECRET=client_secret
+REFRESH_SECRET=other_secrets
 CLIENT_URL=http://localhost:5173
+GROQ_API_KEY=api_key_
+BACKEND_URL=http://localhost:5000
+REDIS_URL=redis_url
+RESEND_API_KEY=api_key_resend
 ```
 
 ```bash
@@ -220,7 +227,7 @@ npm install
 Create a `.env` file in `/Frontend`:
 
 ```env
-VITE_API_URL=http://localhost:5000
+VITE_API_URL=backend_url
 ```
 
 ```bash
@@ -236,7 +243,7 @@ App runs at `http://localhost:5173`.
 1. **Register** or **Log in** to your account
 2. From the **Dashboard**, create a new coding session
 3. Open the **Editor** — write your code, select a language, and run it
-4. Copy the **Shared View** link to let others view your session
+4. Copy the **Shared View** link to let others view your session (Currently under Development)
 
 ---
 
