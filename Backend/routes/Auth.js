@@ -82,7 +82,7 @@ app.post("/login", loginLimiter, loginValidation, async (req, res) => {
     const user = await User.findOne({
       where: { email },
       raw: true,
-      attributes: ["id"],
+      attributes: ["id", "email", "name", "password", "provider"], // fetch what you need
     });
 
     // FIRST check if user exists
