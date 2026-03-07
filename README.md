@@ -6,6 +6,41 @@
 
 ---
 
+## Screenshots
+
+🔐 Login
+
+<img width="3136" height="1478" alt="1-Picsart-AiImageEnhancer" src="https://github.com/user-attachments/assets/9bebd9bc-84d1-4b63-82a9-3d7f646adc48" />
+
+📝 Register
+
+![2](https://github.com/user-attachments/assets/e53d2b8b-2fda-4a37-a6ad-08a56f94a4ff)
+
+🔑 Forgot Password
+
+![3](https://github.com/user-attachments/assets/1bcf97d1-eb4e-4402-8429-4084e70a7d30)
+
+📊 Dashboard
+
+![4](https://github.com/user-attachments/assets/0990e650-da60-4b3e-aef7-8c7ba8511d25)
+
+💻 Editor
+
+![5](https://github.com/user-attachments/assets/87a31898-76a7-40c5-91aa-8aff18f24154)
+
+▶️ Editor — Run Output & Complexity Analysis
+
+![6](https://github.com/user-attachments/assets/cbd14551-d54f-44e8-954d-5fc142381edb)
+
+⚙️ Settings
+
+![7](https://github.com/user-attachments/assets/b4bb1bcb-d94a-4b74-b808-1ea9945c81d6)
+
+👁️ Shared View
+
+![8](https://github.com/user-attachments/assets/a71a8abe-789e-464b-abce-00cf542b2cd9)
+---
+
 ## 📖 About
 
 Collab-Code is an online compiler platform built around the concept of **coding sessions**. Users register, log in, and create personal coding sessions — each acting as an isolated environment where they can write and execute code in their browser. Sessions can be shared with others via a shared view link, making it easy to showcase solutions, teach concepts, or review code without any local setup.
