@@ -5,7 +5,7 @@ const authenticate = require("../middleware/auth");
 const { v4: uuidv4 } = require("uuid");
 const Redis = require("ioredis");
 const rateLimit = require("express-rate-limit");
-const RedisStore = require("rate-limit-redis");
+const { RedisStore } = require("rate-limit-redis");
 
 const redis = new Redis(process.env.REDIS_URL, {
   commandTimeout: 2000,
