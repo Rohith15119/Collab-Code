@@ -5,14 +5,7 @@ const authenticate = require("../middleware/auth");
 const { v4: uuidv4 } = require("uuid");
 const Redis = require("ioredis");
 const rateLimit = require("express-rate-limit");
-
-const limiter = rateLimit({
-  windowMs: 60_000,
-  max: 30,
-  message: { error: "Too many requests" },
-});
-
-router.use(limiter);
+const RedisStore = require("rate-limit-redis");
 
 const redis = new Redis(process.env.REDIS_URL, {
   commandTimeout: 2000,
@@ -20,6 +13,17 @@ const redis = new Redis(process.env.REDIS_URL, {
 });
 
 redis.on("error", (err) => console.error("Redis Error: ", err));
+
+const limiter = rateLimit({
+  windowMs: 60_000,
+  max: 30,
+  message: { error: "Too many requests" },
+  store: new RedisStore({
+    sendCommand: (...args) => redis.call(...args), // reuse existing client
+  }),
+});
+
+router.use(limiter);
 
 async function getCached(ownerId) {
   try {
@@ -40,7 +44,7 @@ async function setCache(ownerId, data) {
 
 async function invalidateCache(ownerId) {
   try {
-    const pattern = `sessions:${ownerId}:*`;
+    const pattern = `sessions:${ownerId}*`;
     let cursor = "0";
     do {
       const [nextCursor, keys] = await redis.scan(
@@ -83,10 +87,10 @@ router.get("/my", authenticate, async (req, res) => {
   try {
     res.set("Cache-Control", "private, no-cache");
 
-    const limitParam = parseInt(req.query.limit);
-    const limit = limitParam > 0 ? limitParam : 0; // 0 = no limit in Mongoose
+    const limitParam = parseInt(req.query.limit, 10);
+    const limit = limitParam > 0 ? limitParam : 0;
 
-    const cacheKey = `${req.user.id}:limit:${limit}`; // No manual prefix — helpers add it
+    const cacheKey = `${req.user.id}:limit:${limit}`;
 
     const cached = await getCached(cacheKey);
     if (cached) {
@@ -100,7 +104,7 @@ router.get("/my", authenticate, async (req, res) => {
       .sort({ updatedAt: -1 })
       .lean();
 
-    if (limit > 0) query.limit(limit); // Only apply limit if explicitly requested
+    if (limit > 0) query.limit(limit);
 
     const sessions = await query;
 
@@ -125,7 +129,6 @@ router.get("/:roomId", authenticate, async (req, res) => {
 
     if (!session) return res.status(404).json({ error: "Session not found" });
 
-    // FIX: Added optional chaining (?.) just in case sharedWith is null/undefined in old DB records
     const canAccess =
       session.ownerId === req.user.id ||
       session.sharedWith?.includes(req.user.id);
