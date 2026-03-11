@@ -38,7 +38,7 @@ async function attachSharedWithEmails(sessions) {
 
 async function EditorialRequestsReceived(req, res) {
   try {
-    const sessions = SharedService.SharedRequest(req.user.id);
+    const sessions = await SharedService.SharedRequest(req.user.id);
 
     const withEmails = await attachOwnerEmails(sessions);
 
@@ -51,7 +51,7 @@ async function EditorialRequestsReceived(req, res) {
 
 async function EditorialRequestsSent(req, res) {
   try {
-    const sessions = SharedService.Fetch_Requests(req.user.id);
+    const sessions = await SharedService.Fetch_Requests(req.user.id);
 
     const withEmails = await attachSharedWithEmails(sessions);
 
@@ -77,7 +77,7 @@ async function AddSharedEditorials(req, res) {
   }
 
   try {
-    const session = SharedService.Fetch_Session_Share(req.params.roomId);
+    const session = await SharedService.Fetch_Session_Share(req.params.roomId);
 
     if (!session) {
       return res.status(404).json({ message: "Session not found" });
@@ -103,10 +103,16 @@ async function AddSharedEditorials(req, res) {
         .json({ message: "No CodeFlash account found for that email" });
     }
 
-    if (session.sharedWith.includes(targetUser.id)) {
+    if (session.sharedWith?.includes(targetUser.id)) {
       return res
         .status(409)
         .json({ message: "Session already shared with this user" });
+    }
+
+    if (session.sharedWith?.length >= 10) {
+      return res.status(400).json({
+        message: "Maximum collaborators reached",
+      });
     }
 
     await Session.updateOne(
@@ -135,8 +141,7 @@ async function DeleteSharedEditorials(req, res) {
   const normalizedEmail = email.trim().toLowerCase();
 
   try {
-    // 1. Verify session ownership
-    const session = SharedService.Fetch_Session_Share(req.params.roomId);
+    const session = await SharedService.Fetch_Session_Share(req.params.roomId);
 
     if (!session) {
       return res.status(404).json({ message: "Session not found" });
@@ -147,7 +152,6 @@ async function DeleteSharedEditorials(req, res) {
         .json({ message: "Only the owner can revoke access" });
     }
 
-    // 2. Look up the target user
     const targetUser = await User.findOne({
       where: { email: normalizedEmail },
     });
@@ -155,7 +159,7 @@ async function DeleteSharedEditorials(req, res) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    const result = SharedService.Remove_Shared_Session(
+    const result = await SharedService.Remove_Shared_Session(
       req.params.roomId,
       targetUser,
     );
@@ -175,7 +179,7 @@ async function Collaborators(req, res) {
   const { roomId } = req.params;
 
   try {
-    const session = SharedService.Fetch_Session_Share(req.params.roomId);
+    const session = await SharedService.Fetch_Session_Share(req.params.roomId);
     if (!session) {
       return res.status(404).json({ message: "Session not found" });
     }
