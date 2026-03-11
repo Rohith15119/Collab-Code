@@ -6,11 +6,6 @@ async function startServer() {
   try {
     await Promise.all([sequelize.authenticate(), connectMongo()]);
     console.log("PostgreSQL Database connected ✅");
-
-    if (process.env.NODE_ENV === "development") {
-      await sequelize.sync({ alter: true });
-      console.log("🛠 Tables synced (development mode)");
-    }
   } catch (error) {
     console.error("❌ Failed to connect to database");
     console.error("Error:", error);
@@ -25,7 +20,7 @@ process.on("SIGTERM", async () => {
   await Promise.all([
     sequelize.close(),
     mongoose.connection.close(),
-    redis.quit(), // if redis is accessible here
+    redis.quit(),
   ]);
   process.exit(0);
 });

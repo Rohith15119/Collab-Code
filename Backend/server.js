@@ -6,19 +6,18 @@ const cookieParser = require("cookie-parser");
 
 dotenv.config();
 
-const db = require("./controllers/DB");
+const db = require("./controllers/Database");
 const authRoutes = require("./routes/Auth");
-const sessionRoutes = require("./routes/SessionInsert");
-const protectedRoutes = require("./routes/ProtectedRoute");
+const sessionRoutes = require("./routes/Sessions");
 const ProfileRoutes = require("./routes/Profile");
 const analyzeRouter = require("./routes/analyse");
 const compression = require("compression");
-const mongoSanitize = require("express-mongo-sanitize");
 const app = express();
 const pinoHttp = require("pino-http")();
 
-app.use(compression());
+app.use(pinoHttp);
 app.use(helmet());
+app.use(compression());
 app.set("trust proxy", 1);
 app.use(
   cors({
@@ -26,7 +25,6 @@ app.use(
     credentials: true,
   }),
 );
-app.use(pinoHttp);
 app.use(cookieParser());
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true, limit: "1mb" }));
@@ -124,7 +122,15 @@ const htmlPageContent = `
 `;
 
 app.use((req, res, next) => {
+  req.setTimeout(8000, () => {
+    res.status(503).json({ error: "Request timeout" });
+  });
+  next();
+});
+
+app.use((req, res, next) => {
   const sanitize = require("express-mongo-sanitize");
+
   sanitize.sanitize(req.body, { replaceWith: "_" });
   sanitize.sanitize(req.params, { replaceWith: "_" });
 
@@ -143,20 +149,14 @@ app.get("/", (req, res) => {
 //Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/session", sessionRoutes);
-app.use("/api/auth", protectedRoutes);
 app.use("/api/profile", ProfileRoutes);
 app.use("/api", analyzeRouter);
 app.use("/api/sharing", require("./routes/sharedView"));
 
-app.use((req, res) => {
-  res.status(404).json({ message: "Route not found" });
-});
-
-app.use((req, res, next) => {
-  req.setTimeout(8000, () => {
-    res.status(503).json({ error: "Request timeout" });
+app.use((err, req, res, next) => {
+  res.status(404).json({
+    message: `Route ${req.method} ${req.originalUrl} not found`,
   });
-  next();
 });
 
 app.use((err, req, res, next) => {
@@ -165,5 +165,5 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+  console.log(`Server is running`);
 });

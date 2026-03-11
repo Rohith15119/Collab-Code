@@ -1,212 +1,39 @@
 const express = require("express");
-const User = require("../models/User");
-const Session = require("../models/Session");
-const passport = require("../config/passport");
-const crypto = require("crypto");
-const bcrypt = require("bcryptjs");
-const { Op } = require("sequelize");
-const jwt = require("jsonwebtoken");
-const { sendResetEmail } = require("../services/EmailService");
+const passport = require("../config/Google");
 const authenticate = require("../middleware/auth");
+const { loginLimiter } = require("../services/Limiter");
+const Auth = require("../controllers/AuthController");
+const Profile = require("../controllers/ProfileController");
 
 const {
   registerValidation,
   loginValidation,
   validate,
 } = require("../validators/AuthValidator");
-const rateLimit = require("express-rate-limit");
-const { RedisStore } = require("rate-limit-redis");
-const Redis = require("ioredis");
 
 const app = express.Router();
 
 app.use(express.json());
 
-const redisClient = new Redis(process.env.REDIS_URL);
+app.get("/me", authenticate, Auth.VerifyMySelf);
 
-redisClient.on("error", (err) => console.error("Auth Redis Error: ", err));
+app.post("/register", registerValidation, Auth.RegisterUser);
 
-const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 5,
-  message: { error: "Too many login attempts. Try again later." },
-  standardHeaders: true,
-  legacyHeaders: false,
-  store: new RedisStore({
-    sendCommand: (...args) => redisClient.call(...args),
-  }),
-});
+app.post(
+  "/login",
+  loginLimiter(
+    15 * 60 * 1000,
+    5,
+    "Too many login attempts. Try again later.",
+    true,
+  ),
+  loginValidation,
+  Auth.LoginUser,
+);
 
-app.get("/me", authenticate, async (req, res) => {
-  try {
-    const user = await User.findByPk(req.user.id, {
-      attributes: ["id", "name", "email", "provider"], // don't send password hash
-    });
-    if (!user) return res.status(404).json({ error: "User not found" });
-    return res.status(200).json({ user });
-  } catch (err) {
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
+app.post("/reset-password/:token", Auth.PasswordReset);
 
-app.post("/register", registerValidation, async (req, res) => {
-  try {
-    const { name, email, password } = req.body;
-
-    const existingUser = await User.findOne({ where: { email } });
-
-    if (existingUser) {
-      return res.status(409).json({ message: "Email already registered ®️" });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const user = await User.create({
-      name,
-      email,
-      password: hashedPassword,
-      provider: "local",
-    });
-
-    res
-      .status(201)
-      .json({ message: "User registered successfully", userId: user.id });
-  } catch (err) {
-    res.status(500).json({ error: err.message || "Internal server error" });
-  }
-});
-
-app.post("/login", loginLimiter, loginValidation, async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    const user = await User.findOne({
-      where: { email },
-      raw: true,
-      attributes: ["id", "email", "name", "password", "provider"], // fetch what you need
-    });
-
-    // FIRST check if user exists
-    if (!user) {
-      return res.status(400).json({ error: "Invalid email or password" });
-    }
-
-    // THEN check password existence
-    if (!user.password) {
-      return res.status(400).json({ error: "Account not properly configured" });
-    }
-
-    if (user.provider && user.provider !== "local") {
-      return res
-        .status(400)
-        .json({ error: "Please login with your social account" });
-    }
-
-    const isMatch = await bcrypt.compare(password, user.password);
-
-    if (!isMatch) {
-      return res.status(403).json({ error: "Invalid email or password" });
-    }
-
-    const accessToken = jwt.sign(
-      { id: user.id, email: user.email },
-      process.env.JWT_SECRET,
-      { expiresIn: "1d" },
-    );
-
-    res.status(200).json({
-      message: "Login successful",
-      token: accessToken,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-      },
-    });
-  } catch (err) {
-    console.error("LOGIN ERROR:", err);
-    res.status(500).json({ error: err.message || "Internal server error" });
-  }
-});
-
-app.post("/reset-password/:token", async (req, res) => {
-  try {
-    const hashedToken = crypto
-      .createHash("sha256")
-      .update(req.params.token)
-      .digest("hex");
-
-    const user = await User.findOne({
-      where: {
-        resetToken: hashedToken,
-        resetTokenExpiry: { [Op.gt]: new Date() },
-      },
-    });
-
-    if (!user)
-      return res.status(400).json({ error: "Invalid or expired token" });
-
-    const { newPassword } = req.body;
-
-    if (!newPassword || newPassword.length < 6) {
-      return res.status(400).json({
-        error: "Password must be at least 6 characters long",
-      });
-    }
-
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-
-    user.password = hashedPassword;
-    user.resetToken = null;
-    user.resetTokenExpiry = null;
-
-    await user.save();
-
-    res.json({ message: "Password updated successfully" });
-  } catch (error) {
-    res
-      .status(500)
-      .json({ error: "Something went wrong", message: error.message });
-  }
-});
-
-app.post("/forgot-password-request", async (req, res) => {
-  try {
-    const email = req.body.email?.trim().toLowerCase();
-
-    if (!email) {
-      return res.status(400).json({ error: "Email is required" });
-    }
-
-    const user = await User.findOne({ where: { email } });
-
-    const responseMessage = "If an account exists, a reset link has been sent.";
-
-    if (!user) {
-      return res.status(200).json({ message: responseMessage });
-    }
-
-    const resetToken = crypto.randomBytes(32).toString("hex");
-
-    const hashedToken = crypto
-      .createHash("sha256")
-      .update(resetToken)
-      .digest("hex");
-
-    await user.update({
-      resetToken: hashedToken,
-      resetTokenExpiry: new Date(Date.now() + 10 * 60 * 1000),
-    });
-
-    sendResetEmail(user.email, resetToken).catch((err) =>
-      console.error("Email error:", err),
-    );
-
-    return res.status(200).json({ message: responseMessage });
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: "Something went wrong" });
-  }
-});
+app.post("/forgot-password-request", Auth.PasswordResetRequest);
 
 app.get(
   "/google",
@@ -216,55 +43,13 @@ app.get(
 app.get(
   "/google/callback",
   passport.authenticate("google", { session: false }),
-  async (req, res) => {
-    try {
-      const token = jwt.sign(
-        { id: req.user.id, email: req.user.email },
-        process.env.JWT_SECRET,
-        { expiresIn: "1d" },
-      );
-
-      res.redirect(`${process.env.CLIENT_URL}/dashboard?token=${token}`);
-    } catch (err) {
-      console.error("Google Auth Error:", err);
-      res.status(500).json({ error: err.message });
-    }
-  },
+  Auth.GoogleCallback,
 );
 
-app.post("/logout", (req, res) => {
-  res.json({ success: true });
-});
+app.post("/logout", Profile.LogoutAccount);
 
-app.put("/profile", authenticate, async (req, res) => {
-  try {
-    const { name } = req.body;
-    await User.update({ name }, { where: { id: req.user.id } });
-    res.json({ success: true, message: "Profile updated" });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+app.put("/profile", authenticate, Profile.Profile);
 
-// Delete account
-app.delete("/delete-account", authenticate, async (req, res) => {
-  try {
-    const userId = req.user.id;
-
-    // Run all three database operations at the exact same time
-    await Promise.all([
-      Session.deleteMany({ ownerId: userId }),
-      Session.updateMany(
-        { sharedWith: userId },
-        { $pull: { sharedWith: userId } },
-      ),
-      User.destroy({ where: { id: userId } }),
-    ]);
-
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+app.delete("/delete-account", authenticate, Profile.DeleteAccountDetails);
 
 module.exports = app;

@@ -7,7 +7,7 @@ const sendResetEmail = async (email, resetToken) => {
     const resetURL = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
 
     await resend.emails.send({
-      from: "Auth System <onboarding@resend.dev>", // default test domain
+      from: "Auth System <Collabcode>",
       to: email,
       subject: "Password Reset Request",
       html: `
