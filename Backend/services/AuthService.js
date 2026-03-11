@@ -4,17 +4,17 @@ const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 
 const Identify = async (userId) => {
-  return await User.findByPk(userId, {
+  return User.findByPk(userId, {
     attributes: ["id", "name", "email", "provider"],
   });
 };
 
 const isExists = async (email) => {
-  return await User.findOne({ where: { email } });
+  return User.findOne({ where: { email } });
 };
 
 const LoginUser = async (name, email, hashedPassword) => {
-  return await User.create({
+  return User.create({
     name,
     email,
     password: hashedPassword,
@@ -23,7 +23,7 @@ const LoginUser = async (name, email, hashedPassword) => {
 };
 
 const ExistingUser = async (email) => {
-  return await User.findOne({
+  return User.findOne({
     where: { email },
     raw: true,
     attributes: ["id", "email", "name", "password", "provider"],
@@ -31,7 +31,7 @@ const ExistingUser = async (email) => {
 };
 
 const CheckUserToken = async (hashedToken) => {
-  return await User.findOne({
+  return User.findOne({
     where: {
       resetToken: hashedToken,
       resetTokenExpiry: { [Op.gt]: new Date() },
@@ -48,7 +48,7 @@ const ResetToken = async (req) => {
     .digest("hex");
 
   if (!req.params.token) {
-    await User.update(
+    User.update(
       {
         resetToken: hashedToken,
         resetTokenExpiry: new Date(Date.now() + 10 * 60 * 1000),
@@ -59,10 +59,10 @@ const ResetToken = async (req) => {
     );
   }
 
-  return hashedToken;
+  return resetToken;
 };
 
-const DigitalSignature = async (id, email) => {
+const DigitalSignature = (id, email) => {
   return jwt.sign({ id: id, email: email }, process.env.JWT_SECRET, {
     expiresIn: "1d",
   });

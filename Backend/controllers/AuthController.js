@@ -6,7 +6,7 @@ const AuthService = require("../services/AuthService");
 
 async function VerifyMySelf(req, res) {
   try {
-    const user = AuthService.Identify(req.user.id);
+    const user = await AuthService.Identify(req.user.id);
 
     if (!user) return res.status(404).json({ error: "User not found" });
 
@@ -20,14 +20,14 @@ async function RegisterUser(req, res) {
   try {
     const { name, email, password } = req.body;
 
-    const existingUser = AuthService.isExists(email);
+    const existingUser = await AuthService.isExists(email);
 
     if (existingUser) {
       return res.status(409).json({ message: "Email already registered ®️" });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const user = AuthService.LoginUser(name, email, password);
+    const user = await AuthService.LoginUser(name, email, password);
 
     res
       .status(201)
@@ -41,7 +41,7 @@ async function LoginUser(req, res) {
   try {
     const { email, password } = req.body;
 
-    const user = AuthService.ExistingUser(email);
+    const user = await AuthService.ExistingUser(email);
 
     if (!user) {
       return res.status(400).json({ error: "Invalid email or password" });
@@ -82,9 +82,9 @@ async function LoginUser(req, res) {
 
 async function PasswordReset(req, res) {
   try {
-    const hashedToken = AuthService.ResetToken(req);
+    const hashedToken = await AuthService.ResetToken(req);
 
-    const user = AuthService.CheckUserToken(hashedToken);
+    const user = await AuthService.CheckUserToken(hashedToken);
 
     if (!user)
       return res.status(400).json({ error: "Invalid or expired token" });
@@ -119,7 +119,7 @@ async function PasswordResetRequest(req, res) {
       return res.status(400).json({ error: "Email is required" });
     }
 
-    const user = AuthService.isExists(email);
+    const user = await AuthService.isExists(email);
 
     const responseMessage = "If an account exists, a reset link has been sent.";
 
@@ -127,7 +127,7 @@ async function PasswordResetRequest(req, res) {
       return res.status(200).json({ message: responseMessage });
     }
 
-    AuthService.ResetToken(req);
+    const resetToken = await AuthService.ResetToken(req);
 
     sendResetEmail(user.email, resetToken).catch((err) =>
       console.error("Email error:", err),
