@@ -8,7 +8,7 @@ async function AnalyzeComplexity(req, res) {
   }
 
   try {
-    const response = analyzeService.ResponseRetrival(code, language);
+    const response = await analyzeService.ResponseRetrival(code, language);
     const text = response.choices[0].message.content.trim();
 
     let parsed;
@@ -22,7 +22,7 @@ async function AnalyzeComplexity(req, res) {
     return res.status(200).json(parsed);
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: "Analysis failed" });
+    return res.status(500).json({ error: "Analysis failed" });
   }
 }
 

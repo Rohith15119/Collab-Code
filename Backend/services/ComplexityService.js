@@ -2,7 +2,7 @@ const Groq = require("groq-sdk");
 const client = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 const ResponseRetrival = async (code, language) => {
-  return await client.chat.completions.create({
+  return client.chat.completions.create({
     model: "llama-3.3-70b-versatile",
     max_tokens: 300,
     messages: [
