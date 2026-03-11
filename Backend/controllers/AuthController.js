@@ -19,6 +19,7 @@ async function VerifyMySelf(req, res) {
 async function RegisterUser(req, res) {
   try {
     const { name, email, password } = req.body;
+    email = req.body.email?.trim().toLowerCase();
 
     const existingUser = await AuthService.isExists(email);
 
@@ -26,8 +27,18 @@ async function RegisterUser(req, res) {
       return res.status(409).json({ message: "Email already registered ®️" });
     }
 
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: "All fields are required" });
+    }
+
+    if (password.length < 6) {
+      return res
+        .status(400)
+        .json({ error: "Password must be at least 6 characters" });
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
-    const user = await AuthService.LoginUser(name, email, password);
+    const user = await AuthService.LoginUser(name, email, hashedPassword);
 
     res
       .status(201)
@@ -82,7 +93,9 @@ async function LoginUser(req, res) {
 
 async function PasswordReset(req, res) {
   try {
-    const hashedToken = await AuthService.ResetToken(req);
+    const token = req.params.token;
+
+    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
 
     const user = await AuthService.CheckUserToken(hashedToken);
 
@@ -127,7 +140,7 @@ async function PasswordResetRequest(req, res) {
       return res.status(200).json({ message: responseMessage });
     }
 
-    const resetToken = await AuthService.ResetToken(req);
+    const resetToken = await AuthService.ResetToken(user);
 
     sendResetEmail(user.email, resetToken).catch((err) =>
       console.error("Email error:", err),

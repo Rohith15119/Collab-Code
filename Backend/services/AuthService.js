@@ -39,25 +39,18 @@ const CheckUserToken = async (hashedToken) => {
   });
 };
 
-const ResetToken = async (req) => {
+const ResetToken = async (user) => {
   const resetToken = crypto.randomBytes(32).toString("hex");
 
   const hashedToken = crypto
     .createHash("sha256")
-    .update(req.params.token || resetToken)
+    .update(resetToken)
     .digest("hex");
 
-  if (!req.params.token) {
-    User.update(
-      {
-        resetToken: hashedToken,
-        resetTokenExpiry: new Date(Date.now() + 10 * 60 * 1000),
-      },
-      {
-        where: { id: req.user.id },
-      },
-    );
-  }
+  await user.update({
+    resetToken: hashedToken,
+    resetTokenExpiry: new Date(Date.now() + 10 * 60 * 1000),
+  });
 
   return resetToken;
 };
