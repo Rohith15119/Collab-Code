@@ -6,9 +6,13 @@ async function CreateSession(req, res) {
   try {
     const { title, language } = req.body;
 
-    const session = SessionService.NewSession(title, language);
+    const session = await SessionService.NewSession(
+      title,
+      language,
+      req.user.id,
+    );
 
-    RedisStore.invalidateCache(req.user.id);
+    await RedisStore.invalidateCache(req.user.id);
 
     return res.status(201).json({ session });
   } catch (err) {
@@ -26,7 +30,7 @@ async function UserSessions(req, res) {
 
     const cacheKey = `${req.user.id}:limit:${limit}`;
 
-    const cached = RedisStore.getCached(cacheKey);
+    const cached = await RedisStore.getCached(cacheKey);
 
     if (cached) {
       return res
@@ -34,13 +38,11 @@ async function UserSessions(req, res) {
         .json({ success: true, count: cached.length, sessions: cached });
     }
 
-    const query = SessionService.SortedSessions();
+    const query = await SessionService.SortedSessions(req.user.id, limit);
 
-    if (limit > 0) query.limit(limit);
+    const sessions = query;
 
-    const sessions = await query;
-
-    RedisStore.setCache(cacheKey, sessions);
+    await RedisStore.setCache(cacheKey, sessions);
 
     return res
       .status(200)
@@ -53,12 +55,12 @@ async function UserSessions(req, res) {
 
 async function FetchSession(req, res) {
   try {
-    const session = SessionService.Get_Session(req.params.roomId);
+    const session = await SessionService.Get_Session(req.params.roomId);
 
     if (!session) return res.status(404).json({ error: "Session not found" });
 
     const canAccess =
-      session.ownerId === req.user.id ||
+      session.ownerId.toString() === req.user.id ||
       session.sharedWith?.includes(req.user.id);
 
     if (!canAccess) return res.status(403).json({ error: "Access Denied" });
@@ -82,31 +84,32 @@ async function EditSession(req, res) {
     if (Object.keys($set).length === 0)
       return res.status(400).json({ error: "No fields provided to update" });
 
-    const session = SessionService.UpdateSession(
+    const session = await SessionService.UpdateSession(
       req.params.roomId,
       req.user.id,
+      $set,
     );
 
     if (!session) return res.status(404).json({ error: "Session not found" });
 
-    RedisStore.invalidateCache(req.user.id);
+    await RedisStore.invalidateCache(req.user.id);
 
-    res.status(200).json({ success: true, session });
+    return res.status(200).json({ success: true, session });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 }
 
 async function DeleteSession(req, res) {
   try {
-    const deleted = SessionService.deleteSession(
+    const deleted = await SessionService.deleteSession(
       req.params.roomId,
       req.user.id,
     );
 
     if (!deleted) return res.status(404).json({ error: "Session not found" });
 
-    RedisStore.invalidateCache(req.user.id);
+    await RedisStore.invalidateCache(req.user.id);
 
     return res.status(200).json({ success: true, message: "Session deleted" });
   } catch (err) {

@@ -2,11 +2,11 @@ const Session = require("../models/Session");
 const User = require("../models/User");
 
 const UserName = async (name, id) => {
-  await User.update({ name }, { where: { id: id } });
+  User.update({ name }, { where: { id: id } });
 };
 
 const Delete = async (userId) => {
-  await Promise.all([
+  Promise.all([
     Session.deleteMany({ ownerId: userId }),
     Session.updateMany(
       { sharedWith: userId },

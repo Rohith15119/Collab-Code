@@ -4,7 +4,7 @@ const User = require("../models/User");
 
 async function Profile(req, res) {
   try {
-    ProfileService.UserName(req.body.name, req.user.id);
+    await ProfileService.UserName(req.body.name, req.user.id);
 
     return res.status(200).json({ success: true, message: "Profile updated" });
   } catch (err) {
@@ -18,7 +18,7 @@ async function UpdateAccount(req, res) {
     const id = req.user.id;
     const normalizedEmail = email?.trim().toLowerCase();
 
-    const user = AuthService.Identify(id);
+    const user = await AuthService.Identify(id);
 
     if (!name || name.trim().length < 2) {
       return res.status(400).json({ message: "Invalid name" });
@@ -42,7 +42,7 @@ async function UpdateAccount(req, res) {
     }
 
     if (normalizedEmail !== user.email) {
-      const existingUser = AuthService.isExists(normalizedEmail);
+      const existingUser = await AuthService.isExists(normalizedEmail);
 
       if (existingUser && existingUser.id !== user.id) {
         return res.status(400).json({
@@ -83,7 +83,7 @@ async function DeleteAccountDetails(req, res) {
     if (!userId)
       return res.status(400).json({ message: "Invalid User Account" });
 
-    ProfileService.Delete(userId);
+    await ProfileService.Delete(userId);
 
     res.status(200).json({ success: true });
   } catch (err) {
