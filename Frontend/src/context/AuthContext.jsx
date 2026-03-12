@@ -40,6 +40,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const { data } = await api.post("/auth/login", { email, password });
       localStorage.setItem("token", data.token);
+      setUser(data);
     } catch (err) {
       console.error(err);
       throw err;
