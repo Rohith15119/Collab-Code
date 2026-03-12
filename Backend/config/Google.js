@@ -1,3 +1,7 @@
+const passport = require("passport");
+const GoogleStrategy = require("passport-google-oauth20").Strategy;
+const User = require("../models/User");
+
 passport.use(
   new GoogleStrategy(
     {
@@ -7,15 +11,14 @@ passport.use(
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
-        if (!profile.emails || profile.emails.length === 0) {
-          return done(new Error("No email returned from Google"), null);
-        }
-
         const email = profile.emails[0].value.toLowerCase();
 
-        let user = await User.findOne({ where: { email } });
+        let user = await User.findOne({
+          where: { email: email },
+        });
 
         if (user) {
+          // If user registered locally before, upgrade to Google
           if (user.provider !== "google") {
             user.provider = "google";
             user.provider_id = profile.id;
@@ -27,19 +30,20 @@ passport.use(
           return done(null, user);
         }
 
-        user = await User.create({
-          name: profile.displayName,
-          email: email,
-          provider: "google",
-          password: null,
-          provider_id: profile.id,
-          isVerified: true,
-          role: "user",
-        });
+        if (!user) {
+          user = await User.create({
+            name: profile.displayName,
+            email: profile.emails[0].value,
+            provider: "google",
+            password: null,
+            provider_id: profile.id,
+            isVerified: true,
+            role: "user",
+          });
+        }
 
         return done(null, user);
       } catch (err) {
-        console.error("Google Strategy Error:", err);
         return done(err, null);
       }
     },

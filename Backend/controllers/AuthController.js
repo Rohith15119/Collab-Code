@@ -66,14 +66,10 @@ async function LoginUser(req, res) {
       return res.status(400).json({ error: "Invalid email or password" });
     }
 
-    if (!user.isVerified) {
+    if (user.provider === "local" && !user.isVerified) {
       return res.status(403).json({
         error: "Please verify your email first",
       });
-    }
-
-    if (!user) {
-      return res.status(400).json({ error: "Invalid email or password" });
     }
 
     if (!user.password) {
