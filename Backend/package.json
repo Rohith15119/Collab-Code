@@ -13,7 +13,6 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@getbrevo/brevo": "^4.0.1",
     "axios": "^1.13.5",
     "bcryptjs": "^3.0.3",
     "compression": "^1.8.1",
@@ -38,6 +37,7 @@
     "rate-limit-redis": "^4.3.1",
     "resend": "^6.9.3",
     "sequelize": "^6.37.7",
+    "sib-api-v3-sdk": "^8.5.0",
     "uuid": "^13.0.0"
   }
 }
