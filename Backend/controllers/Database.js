@@ -4,11 +4,7 @@ require("../models/User");
 
 async function startServer() {
   try {
-    await Promise.all([
-      sequelize.authenticate(),
-      await sequelize.sync({ force: true }),
-      connectMongo(),
-    ]);
+    await Promise.all([sequelize.authenticate(), connectMongo()]);
 
     console.log("PostgreSQL Database connected ✅");
   } catch (error) {
