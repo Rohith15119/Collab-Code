@@ -46,7 +46,25 @@ app.post("/verify-account/:token", Auth.VerifyAccount);
 
 app.get(
   "/google/callback",
-  passport.authenticate("google", { session: false }),
+  (req, res, next) => {
+    // Validate iss parameter before passport touches it
+    const iss = req.query.iss;
+    if (!iss || iss !== "https://accounts.google.com") {
+      return res.redirect(`${process.env.CLIENT_URL}/login?error=auth_failed`);
+    }
+    next();
+  },
+  (req, res, next) => {
+    passport.authenticate("google", { session: false }, (err, user) => {
+      if (err || !user) {
+        return res.redirect(
+          `${process.env.CLIENT_URL}/login?error=auth_failed`,
+        );
+      }
+      req.user = user;
+      next();
+    })(req, res, next);
+  },
   Auth.GoogleCallback,
 );
 
