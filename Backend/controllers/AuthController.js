@@ -1,7 +1,10 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
-const { sendResetEmail } = require("../services/EmailService");
+const {
+  sendResetEmail,
+  sendVerificationMail,
+} = require("../services/EmailService");
 const AuthService = require("../services/AuthService");
 
 async function VerifyMySelf(req, res) {
@@ -18,8 +21,9 @@ async function VerifyMySelf(req, res) {
 
 async function RegisterUser(req, res) {
   try {
-    const { name, email, password } = req.body;
-    email = req.body.email?.trim().toLowerCase();
+    const name = req.body.name?.trim();
+    const email = req.body.email?.trim().toLowerCase();
+    const password = req.body.password?.trim();
 
     const existingUser = await AuthService.isExists(email);
 
@@ -31,14 +35,18 @@ async function RegisterUser(req, res) {
       return res.status(400).json({ error: "All fields are required" });
     }
 
-    if (password.length < 6) {
-      return res
-        .status(400)
-        .json({ error: "Password must be at least 6 characters" });
+    if (password.length < 8) {
+      return res.status(400).json({
+        error: "Password must be at least 8 characters",
+      });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = await AuthService.LoginUser(name, email, hashedPassword);
+
+    const Token = await AuthService.GenerateVerificationToken(user);
+
+    await sendVerificationMail(email, Token).catch((err) => console.error(err));
 
     res
       .status(201)
@@ -53,6 +61,16 @@ async function LoginUser(req, res) {
     const { email, password } = req.body;
 
     const user = await AuthService.ExistingUser(email);
+
+    if (!user) {
+      return res.status(400).json({ error: "Invalid email or password" });
+    }
+
+    if (!user.isVerified) {
+      return res.status(403).json({
+        error: "Please verify your email first",
+      });
+    }
 
     if (!user) {
       return res.status(400).json({ error: "Invalid email or password" });
@@ -142,7 +160,7 @@ async function PasswordResetRequest(req, res) {
 
     const resetToken = await AuthService.ResetToken(user);
 
-    sendResetEmail(user.email, resetToken).catch((err) =>
+    await sendResetEmail(user.email, resetToken).catch((err) =>
       console.error("Email error:", err),
     );
 
@@ -164,6 +182,31 @@ async function GoogleCallback(req, res) {
   }
 }
 
+async function VerifyAccount(req, res) {
+  try {
+    const token = req.params.token;
+
+    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
+    const user = await AuthService.checkVerifyToken(hashedToken);
+
+    if (!user) {
+      return res.status(400).json({ message: "User not found" });
+    }
+
+    user.isVerified = true;
+    user.emailVerificationToken = null;
+    user.emailVerificationExpiry = null;
+
+    await user.save();
+
+    return res.status(201).json({ message: "Email Verified Success" });
+  } catch (err) {
+    console.error(err);
+    throw err;
+  }
+}
+
 module.exports = {
   VerifyMySelf,
   LoginUser,
@@ -171,4 +214,5 @@ module.exports = {
   PasswordReset,
   PasswordResetRequest,
   GoogleCallback,
+  VerifyAccount,
 };

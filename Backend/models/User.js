@@ -27,15 +27,19 @@ const User = sequelize.define(
     password: {
       type: DataTypes.STRING,
       allowNull: true,
-      validate: {
-        isValidPassword(value) {
-          if (this.provider === "local") {
-            if (!value || value.length < 8) {
-              throw new Error("Password must be at least 8 characters");
-            }
-          }
-        },
-      },
+    },
+
+    isVerified: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+
+    emailVerificationToken: {
+      type: DataTypes.STRING,
+    },
+
+    emailVerificationExpiry: {
+      type: DataTypes.DATE,
     },
 
     provider: {

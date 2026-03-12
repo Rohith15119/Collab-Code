@@ -40,6 +40,8 @@ app.get(
   passport.authenticate("google", { scope: ["profile", "email"] }),
 );
 
+app.post("/verify-account/:token", Auth.VerifyAccount);
+
 app.get(
   "/google/callback",
   passport.authenticate("google", { session: false }),
