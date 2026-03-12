@@ -10,7 +10,7 @@ export default function VerifyAccount() {
   useEffect(() => {
     const verify = async () => {
       try {
-        await api.get(`/auth/verify-account/${token}`);
+        await api.post(`/auth/verify-account/${token}`);
         navigate("/login?verified=true");
       } catch (err) {
         navigate("/login?error=invalid_token");
