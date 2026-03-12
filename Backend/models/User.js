@@ -48,6 +48,11 @@ const User = sequelize.define(
       defaultValue: "local",
     },
 
+    provider_id: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+
     role: {
       type: DataTypes.ENUM("user", "admin"),
       allowNull: false,
