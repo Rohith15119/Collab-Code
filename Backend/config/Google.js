@@ -23,6 +23,7 @@ passport.use(
             user.provider = "google";
             user.provider_id = profile.id;
             user.password = null;
+            user.isVerified = true;
             await user.save();
           }
 
@@ -36,6 +37,7 @@ passport.use(
             provider: "google",
             password: null,
             provider_id: profile.id,
+            isVerified: true,
             role: "user",
           });
         }

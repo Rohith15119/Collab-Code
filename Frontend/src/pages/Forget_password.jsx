@@ -1,11 +1,13 @@
 import { useState } from "react";
 import api from "../api/index";
+import { useAuth } from "../context/AuthContext";
 
 export default function ForgetPassword() {
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const { forgetPassword } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -14,9 +16,7 @@ export default function ForgetPassword() {
     setLoading(true);
 
     try {
-      const res = await api.post(`/auth/forgot-password-request`, {
-        email: email.trim().toLowerCase(),
-      });
+      const res = forgetPassword(email?.trim().toLowerCase());
 
       setMessage(
         "If an account exists with this email, a reset link has been sent.",

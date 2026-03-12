@@ -134,7 +134,6 @@ app.use((req, res, next) => {
   sanitize.sanitize(req.body, { replaceWith: "_" });
   sanitize.sanitize(req.params, { replaceWith: "_" });
 
-  // Only sanitize query if it's not a read-only getter
   const queryDescriptor = Object.getOwnPropertyDescriptor(req, "query");
   if (!queryDescriptor || queryDescriptor.writable || queryDescriptor.set) {
     sanitize.sanitize(req.query, { replaceWith: "_" });
@@ -153,7 +152,7 @@ app.use("/api/profile", ProfileRoutes);
 app.use("/api", analyzeRouter);
 app.use("/api/sharing", require("./routes/sharedView"));
 
-app.use((err, req, res, next) => {
+app.use((req, res) => {
   res.status(404).json({
     message: `Route ${req.method} ${req.originalUrl} not found`,
   });
@@ -165,5 +164,5 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Server is running`);
+  console.log(`Server running on port ${PORT}`);
 });

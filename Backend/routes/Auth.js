@@ -15,6 +15,8 @@ const app = express.Router();
 
 app.use(express.json());
 
+app.use(passport.initialize());
+
 app.get("/me", authenticate, Auth.VerifyMySelf);
 
 app.post("/register", registerValidation, Auth.RegisterUser);

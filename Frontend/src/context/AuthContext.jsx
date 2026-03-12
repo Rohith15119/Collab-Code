@@ -47,6 +47,8 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const isVerified = async () => {};
+
   const refreshUser = async () => {
     try {
       const { data } = await api.get("/auth/me");
@@ -82,9 +84,10 @@ export const AuthProvider = ({ children }) => {
 
   const forgetPassword = async (email) => {
     try {
-      await api.post("/auth/forgot-password-request", { email });
+      return await api.post("/auth/forgot-password-request", { email });
     } catch (err) {
       console.error(err);
+      throw err;
     }
   };
 
