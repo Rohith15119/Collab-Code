@@ -46,7 +46,7 @@ async function RegisterUser(req, res) {
 
     const Token = await AuthService.GenerateVerificationToken(user);
 
-    await sendVerificationMail(email, Token).catch((err) => console.error(err));
+    await sendVerificationMail(email, Token);
 
     res
       .status(201)
