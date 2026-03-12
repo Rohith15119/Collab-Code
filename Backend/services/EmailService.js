@@ -29,7 +29,7 @@ const sendResetEmail = async (email, resetToken) => {
 };
 
 const sendVerificationMail = async (email, VerifyToken) => {
-  const verifyUrl = `${process.env.BACKEND_URL}/api/auth/verify-account/${VerifyToken}`;
+  const verifyUrl = `${process.env.CLIENT_URL}/verify-account/${VerifyToken}`;
 
   const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
   sendSmtpEmail.sender = {

@@ -47,7 +47,6 @@ app.post("/verify-account/:token", Auth.VerifyAccount);
 app.get(
   "/google/callback",
   (req, res, next) => {
-    // Validate iss parameter before passport touches it
     const iss = req.query.iss;
     if (!iss || iss !== "https://accounts.google.com") {
       return res.redirect(`${process.env.CLIENT_URL}/login?error=auth_failed`);
