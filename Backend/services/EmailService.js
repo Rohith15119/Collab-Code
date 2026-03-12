@@ -2,9 +2,6 @@ const { Resend } = require("resend");
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-console.log("RESEND KEY:", process.env.RESEND_API_KEY);
-console.log("MAILBUSTER KEY:", process.env.MAILBUSTER_API_KEY);
-
 const sendResetEmail = async (email, resetToken) => {
   try {
     const resetURL = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
@@ -32,7 +29,7 @@ const sendResetEmail = async (email, resetToken) => {
 };
 
 const sendVerificationMail = async (email, VerifyToken) => {
-  const verifyUrl = `${process.env.BACKEND_URL}/verify-account/${VerifyToken}`;
+  const verifyUrl = `${process.env.CLIENT_URL}/verify-account/${VerifyToken}`;
 
   await resend.emails.send({
     from: "CollabCode <onboarding@resend.dev>",
