@@ -122,13 +122,6 @@ const htmlPageContent = `
 `;
 
 app.use((req, res, next) => {
-  req.setTimeout(8000, () => {
-    res.status(503).json({ error: "Request timeout" });
-  });
-  next();
-});
-
-app.use((req, res, next) => {
   const sanitize = require("express-mongo-sanitize");
 
   sanitize.sanitize(req.body, { replaceWith: "_" });
@@ -165,4 +158,8 @@ app.use((err, req, res, next) => {
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+});
+
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("Unhandled Rejection:", reason);
 });
