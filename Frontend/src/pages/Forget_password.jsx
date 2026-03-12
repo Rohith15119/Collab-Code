@@ -16,7 +16,7 @@ export default function ForgetPassword() {
     setLoading(true);
 
     try {
-      const res = forgetPassword(email?.trim().toLowerCase());
+      const res = forgetPassword(email);
 
       setMessage(
         "If an account exists with this email, a reset link has been sent.",

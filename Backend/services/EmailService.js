@@ -29,22 +29,21 @@ const sendResetEmail = async (email, resetToken) => {
 };
 
 const sendVerificationMail = async (email, VerifyToken) => {
-  const verifyUrl = `${process.env.CLIENT_URL}/verify-account/${VerifyToken}`;
+  console.log("📧 Attempting email to:", email);
+  console.log("🔑 RESEND KEY exists:", !!process.env.RESEND_API_KEY);
+  console.log("🌐 BACKEND_URL:", process.env.BACKEND_URL);
 
-  await resend.emails.send({
-    from: "CollabCode <onboarding@resend.dev>",
+  const verifyUrl = `${process.env.BACKEND_URL}/api/auth/verify-account/${VerifyToken}`;
+  console.log("🔗 Verify URL:", verifyUrl);
+
+  const result = await resend.emails.send({
+    from: "onboarding@resend.dev",
     to: email,
     subject: "Verify your CollabCode account",
-    html: `
-      <h1>Verify your Account</h1>
-      <p>Click below to get access to CollabCode.</p>
-      <a href="${verifyUrl}" 
-         style="background:#7c3aed;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;">
-         Verify Account
-      </a>
-      <p>This link expires in 24 hours.</p>
-    `,
+    html: `<h1>Verify Account</h1><a href="${verifyUrl}">Click here</a>`,
   });
+
+  console.log("📬 Resend result:", JSON.stringify(result));
 };
 
 module.exports = { sendResetEmail, sendVerificationMail };
