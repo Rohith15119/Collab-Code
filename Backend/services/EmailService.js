@@ -22,6 +22,8 @@ const sendResetEmail = async (email, resetToken) => {
   `;
 
   await apiInstance.sendTransacEmail(sendSmtpEmail);
+
+  
 };
 
 const sendVerificationMail = async (email, VerifyToken) => {
