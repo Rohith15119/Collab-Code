@@ -1,8 +1,8 @@
-const Brevo = require("@getbrevo/brevo");
+const { ApiClient, TransactionalEmailsApi } = require("@getbrevo/brevo");
 
-const client = Brevo.ApiClient.instance;
+const client = ApiClient.instance;
 client.authentications["api-key"].apiKey = process.env.BREVO_API_KEY;
-const api = new Brevo.TransactionalEmailsApi();
+const api = new TransactionalEmailsApi();
 
 const sendResetEmail = async (email, resetToken) => {
   const resetURL = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
