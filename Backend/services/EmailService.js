@@ -10,7 +10,10 @@ const sendResetEmail = async (email, resetToken) => {
   const resetURL = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
 
   const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
-  sendSmtpEmail.sender = { email: "collabcode17@gmail.com", name: "CollabCode" };
+  sendSmtpEmail.sender = {
+    email: "collabcode17@gmail.com",
+    name: "CollabCode",
+  };
   sendSmtpEmail.to = [{ email }];
   sendSmtpEmail.subject = "Password Reset Request";
   sendSmtpEmail.htmlContent = `
@@ -21,16 +24,18 @@ const sendResetEmail = async (email, resetToken) => {
     <p>This link expires in 10 minutes.</p>
   `;
 
-  await apiInstance.sendTransacEmail(sendSmtpEmail);
-
-  
+  const result = await apiInstance.sendTransacEmail(sendSmtpEmail);
+  console.log("📬 Verification email result:", JSON.stringify(result)); // 👈
 };
 
 const sendVerificationMail = async (email, VerifyToken) => {
   const verifyUrl = `${process.env.BACKEND_URL}/api/auth/verify-account/${VerifyToken}`;
 
   const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
-  sendSmtpEmail.sender = { email: "collabcode17@gmail.com", name: "CollabCode" };
+  sendSmtpEmail.sender = {
+    email: "collabcode17@gmail.com",
+    name: "CollabCode",
+  };
   sendSmtpEmail.to = [{ email }];
   sendSmtpEmail.subject = "Verify your CollabCode account";
   sendSmtpEmail.htmlContent = `
@@ -41,7 +46,8 @@ const sendVerificationMail = async (email, VerifyToken) => {
     <p>This link expires in 24 hours.</p>
   `;
 
-  await apiInstance.sendTransacEmail(sendSmtpEmail);
+  const result = await apiInstance.sendTransacEmail(sendSmtpEmail);
+  console.log("📬 Verification email result:", JSON.stringify(result)); // 👈
 };
 
 module.exports = { sendResetEmail, sendVerificationMail };
