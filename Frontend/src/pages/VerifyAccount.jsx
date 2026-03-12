@@ -1,7 +1,5 @@
 import { React } from "react";
 
-function VerifyAccount() {
+export default function VerifyAccount() {
   return <div> Account Verification Page </div>;
 }
-
-export default VerifyAccount;
