@@ -4,7 +4,12 @@ require("../models/User");
 
 async function startServer() {
   try {
-    await Promise.all([sequelize.authenticate(), connectMongo()]);
+    await Promise.all([
+      sequelize.authenticate(),
+      await sequelize.sync({ force: true }),
+      connectMongo(),
+    ]);
+
     console.log("PostgreSQL Database connected ✅");
   } catch (error) {
     console.error("❌ Failed to connect to database");
