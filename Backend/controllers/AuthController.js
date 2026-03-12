@@ -62,7 +62,7 @@ async function LoginUser(req, res) {
       return res.status(400).json({ error: "Account not properly configured" });
     }
 
-    if (user.provider && user.provider !== "local") {
+    if (user.provider !== "local" && user.password === null) {
       return res
         .status(400)
         .json({ error: "Please login with your social account" });
