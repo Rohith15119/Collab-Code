@@ -15,6 +15,20 @@ export default function Login() {
   };
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+
+    if (params.get("verified") === "true") {
+      toast.success("Email verified! You can now log in. ✅");
+      window.history.replaceState({}, "", "/login");
+    }
+
+    if (params.get("error") === "invalid_token") {
+      toast.error("Verification link is invalid or expired.");
+      window.history.replaceState({}, "", "/login");
+    }
+  }, []);
+
+  useEffect(() => {
     if (user) {
       navigate("/dashboard", { replace: true });
     }

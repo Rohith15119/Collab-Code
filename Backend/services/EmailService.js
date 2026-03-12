@@ -30,10 +30,10 @@ const sendResetEmail = async (email, resetToken) => {
 
 const sendVerificationMail = async (email, VerifyToken) => {
   try {
-    const verifyUrl = `${process.env.CLIENT_URL}/verify-account/${VerifyToken}`;
+    const verifyUrl = `${process.env.BACKEND_URL}/api/auth/verify-account/${VerifyToken}`;
 
     await resend.emails.send({
-      from: "Account System <onboarding@resend.dev>",
+      from: "Account System <noreply@yourdomain.com>",
       to: email,
       subject: "Account Verification Needed",
       html: `

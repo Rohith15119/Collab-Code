@@ -42,7 +42,7 @@ app.get(
   passport.authenticate("google", { scope: ["profile", "email"] }),
 );
 
-app.post("/verify-account/:token", Auth.VerifyAccount);
+app.get("/verify-account/:token", Auth.VerifyAccount);
 
 app.get(
   "/google/callback",

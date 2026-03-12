@@ -182,25 +182,25 @@ async function GoogleCallback(req, res) {
 async function VerifyAccount(req, res) {
   try {
     const token = req.params.token;
-
     const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
-
     const user = await AuthService.checkVerifyToken(hashedToken);
 
     if (!user) {
-      return res.status(400).json({ message: "User not found" });
+      // Redirect to frontend with error
+      return res.redirect(
+        `${process.env.CLIENT_URL}/login?error=invalid_token`,
+      );
     }
 
     user.isVerified = true;
     user.emailVerificationToken = null;
     user.emailVerificationExpiry = null;
-
     await user.save();
 
-    return res.status(201).json({ message: "Email Verified Success" });
+    return res.redirect(`${process.env.CLIENT_URL}/login?verified=true`);
   } catch (err) {
     console.error(err);
-    throw err;
+    return res.redirect(`${process.env.CLIENT_URL}/login?error=server_error`);
   }
 }
 
