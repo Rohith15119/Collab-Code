@@ -29,7 +29,7 @@ const sendResetEmail = async (email, resetToken) => {
 };
 
 const sendVerificationMail = async (email, VerifyToken) => {
-  const verifyUrl = `${process.env.BACKEND_URL}/api/auth/verify-account/${VerifyToken}`;
+  const verifyUrl = `${process.env.BACKEND_URL}/verify-account/${VerifyToken}`;
 
   await resend.emails.send({
     from: "CollabCode <onboarding@resend.dev>",
