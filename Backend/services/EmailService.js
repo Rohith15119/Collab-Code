@@ -33,7 +33,7 @@ const sendVerificationMail = async (email, VerifyToken) => {
     const verifyUrl = `${process.env.BACKEND_URL}/api/auth/verify-account/${VerifyToken}`;
 
     await resend.emails.send({
-      from: "Account System <noreply@yourdomain.com>",
+      from: "CollabCode <onboarding@resend.dev>",
       to: email,
       subject: "Account Verification Needed",
       html: `

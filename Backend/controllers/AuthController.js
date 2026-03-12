@@ -27,12 +27,12 @@ async function RegisterUser(req, res) {
 
     const existingUser = await AuthService.isExists(email);
 
-    if (existingUser) {
-      return res.status(409).json({ message: "Email already registered ®️" });
-    }
-
     if (!name || !email || !password) {
       return res.status(400).json({ error: "All fields are required" });
+    }
+
+    if (existingUser) {
+      return res.status(409).json({ message: "Email already registered ®️" });
     }
 
     if (password.length < 8) {
@@ -156,14 +156,12 @@ async function PasswordResetRequest(req, res) {
 
     const resetToken = await AuthService.ResetToken(user);
 
-    await sendResetEmail(user.email, resetToken).catch((err) =>
-      console.error("Email error:", err),
-    );
+    await sendResetEmail(user.email, resetToken);
 
     return res.status(200).json({ message: responseMessage });
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ error: "Something went wrong" });
+    return res.status(500).json({ error: err.message });
   }
 }
 
@@ -187,9 +185,7 @@ async function VerifyAccount(req, res) {
 
     if (!user) {
       // Redirect to frontend with error
-      return res.redirect(
-        `${process.env.CLIENT_URL}/login?error=invalid_token`,
-      );
+      return res.redirect(`${process.env.CLIENT_URL}/login`);
     }
 
     user.isVerified = true;
@@ -197,10 +193,10 @@ async function VerifyAccount(req, res) {
     user.emailVerificationExpiry = null;
     await user.save();
 
-    return res.redirect(`${process.env.CLIENT_URL}/login?verified=true`);
+    return res.redirect(`${process.env.CLIENT_URL}/dashboard`);
   } catch (err) {
     console.error(err);
-    return res.redirect(`${process.env.CLIENT_URL}/login?error=server_error`);
+    return res.redirect(`${process.env.CLIENT_URL}/login`);
   }
 }
 
