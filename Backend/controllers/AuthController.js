@@ -161,7 +161,7 @@ async function PasswordResetRequest(req, res) {
     return res.status(200).json({ message: responseMessage });
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: "Something went wrong" });
   }
 }
 
@@ -185,7 +185,9 @@ async function VerifyAccount(req, res) {
 
     if (!user) {
       // Redirect to frontend with error
-      return res.redirect(`${process.env.CLIENT_URL}/login`);
+      return res.redirect(
+        `${process.env.CLIENT_URL}/login?error=invalid_token`,
+      );
     }
 
     user.isVerified = true;
@@ -193,10 +195,10 @@ async function VerifyAccount(req, res) {
     user.emailVerificationExpiry = null;
     await user.save();
 
-    return res.redirect(`${process.env.CLIENT_URL}/dashboard`);
+    return res.redirect(`${process.env.CLIENT_URL}/login?verified=true`);
   } catch (err) {
     console.error(err);
-    return res.redirect(`${process.env.CLIENT_URL}/login`);
+    return res.redirect(`${process.env.CLIENT_URL}/login?error=server_error`);
   }
 }
 

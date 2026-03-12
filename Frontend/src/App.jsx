@@ -11,6 +11,8 @@ import SharedView from "./pages/SharedView";
 import Settings from "./pages/Settings";
 import ForgetPassword from "./pages/Forget_password";
 import ResetPassword from "./pages/ResetPassword";
+import VerifyEmailNotice from "./pages/VerifyEmailNotice";
+import VerifyAccount from "./pages/VerifyAccount";
 
 function App() {
   const { user } = useAuth();
@@ -32,6 +34,8 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route path="/verify-email-notice" element={<VerifyEmailNotice />} />
+        <Route path="/verify-account/:token" element={<VerifyAccount />} />
         <Route
           path="/editor/:roomId"
           element={

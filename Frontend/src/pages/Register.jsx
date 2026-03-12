@@ -21,8 +21,8 @@ export default function Register() {
     setLoading(true);
     try {
       await register(form.name, form.email.trim().toLowerCase(), form.password);
-      toast.success("Account created! Welcome 🎉");
-      navigate("/dashboard");
+      toast.success("Check your email to verify your account 📧");
+      navigate("/verify-email-notice");
     } catch (err) {
       toast.error(err.response?.data?.message || "Registration failed");
     } finally {
