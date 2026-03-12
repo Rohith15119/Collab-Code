@@ -210,6 +210,37 @@ async function VerifyAccount(req, res) {
   }
 }
 
+async function ResendVerification(req, res) {
+  try {
+    const email = req.body.email?.trim().toLowerCase();
+
+    if (!email) return res.status(400).json({ error: "Email is required" });
+
+    const user = await AuthService.isExists(email);
+
+    if (!user)
+      return res
+        .status(200)
+        .json({ message: "If account exists, email sent." });
+
+    if (user.isVerified) {
+      return res.status(400).json({ error: "Account already verified" });
+    }
+
+    const Token = await AuthService.GenerateVerificationToken(user);
+
+    try {
+      await sendVerificationMail(email, Token);
+    } catch (err) {
+      console.error("Email failed:", err?.message);
+    }
+
+    return res.status(200).json({ message: "Verification email resent!" });
+  } catch (err) {
+    return res.status(500).json({ error: "Something went wrong" });
+  }
+}
+
 module.exports = {
   VerifyMySelf,
   LoginUser,
@@ -218,4 +249,5 @@ module.exports = {
   PasswordResetRequest,
   GoogleCallback,
   VerifyAccount,
+  ResendVerification,
 };

@@ -67,6 +67,8 @@ app.get(
   Auth.GoogleCallback,
 );
 
+app.post("/resend-verification", Auth.ResendVerification);
+
 app.post("/logout", Profile.LogoutAccount);
 
 app.put("/profile", authenticate, Profile.Profile);

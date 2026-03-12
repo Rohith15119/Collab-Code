@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import api from "../api/index";
 import toast from "react-hot-toast";
 
 export default function Login() {
@@ -9,6 +10,8 @@ export default function Login() {
   const [form, setForm] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showResend, setShowResend] = useState(false); // 👈
+  const [resendLoading, setResendLoading] = useState(false); // 👈
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -16,12 +19,10 @@ export default function Login() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-
     if (params.get("verified") === "true") {
       toast.success("Email verified! You can now log in. ✅");
       window.history.replaceState({}, "", "/login");
     }
-
     if (params.get("error") === "invalid_token") {
       toast.error("Verification link is invalid or expired.");
       window.history.replaceState({}, "", "/login");
@@ -29,39 +30,56 @@ export default function Login() {
   }, []);
 
   useEffect(() => {
-    if (user) {
-      navigate("/dashboard", { replace: true });
-    }
+    if (user) navigate("/dashboard", { replace: true });
   }, [user, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setShowResend(false); // 👈 reset on each attempt
     try {
       await login(form.email.trim().toLowerCase(), form.password);
       toast.success("Welcome back! 👋");
       navigate("/dashboard", { replace: true });
     } catch (err) {
-      toast.error(
+      const errorMsg =
         err.response?.data?.error ||
-          err.response?.data?.message ||
-          "Login failed",
-      );
+        err.response?.data?.message ||
+        "Login failed";
+      toast.error(errorMsg);
+      if (err.response?.status === 403 && errorMsg.includes("verify")) {
+        // 👈
+        setShowResend(true);
+      }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    // 👈
+    setResendLoading(true);
+    try {
+      await api.post("/auth/resend-verification", {
+        email: form.email.trim().toLowerCase(),
+      });
+      toast.success("Verification email sent! Check your inbox 📧");
+      setShowResend(false);
+    } catch (err) {
+      toast.error(err.response?.data?.error || "Failed to resend email");
+    } finally {
+      setResendLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center px-4">
       <div className="w-full max-w-md">
-        {/* Logo */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-green-400">⚡ CollabCode</h1>
           <p className="text-gray-400 mt-2">Sign in to your account</p>
         </div>
 
-        {/* Card */}
         <div className="bg-gray-800 rounded-2xl p-8 border border-gray-700">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -73,7 +91,7 @@ export default function Login() {
                 onChange={handleChange}
                 required
                 placeholder="you@example.com"
-                className="w-full bg-gray-700 text-white px-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-green-500 placeholder-gray-500"
+                className="w-full bg-gray-700 text/white px-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-green-500 placeholder-gray-500"
               />
             </div>
 
@@ -81,7 +99,6 @@ export default function Login() {
               <label className="text-sm text-gray-400 block mb-1">
                 Password
               </label>
-
               <input
                 type={showPassword ? "text" : "password"}
                 name="password"
@@ -91,7 +108,6 @@ export default function Login() {
                 placeholder="••••••••"
                 className="w-full bg-gray-700 text-white px-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-green-500 placeholder-gray-500"
               />
-
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
@@ -109,6 +125,23 @@ export default function Login() {
               {loading ? "Signing in..." : "Sign In"}
             </button>
           </form>
+
+          {/* 👇 Resend verification — only shows after 403 error */}
+          {showResend && (
+            <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-xl text-center">
+              <p className="text-yellow-400 text-sm mb-2">
+                📧 Your email is not verified yet.
+              </p>
+              <button
+                type="button"
+                onClick={handleResend}
+                disabled={resendLoading}
+                className="text-sm bg-yellow-500 hover:bg-yellow-400 disabled:opacity-50 text-black font-bold px-4 py-2 rounded-xl transition"
+              >
+                {resendLoading ? "Sending..." : "Resend Verification Email"}
+              </button>
+            </div>
+          )}
 
           <div className="flex justify-end mt-2">
             <Link
