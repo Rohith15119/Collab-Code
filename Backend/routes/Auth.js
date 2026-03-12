@@ -46,7 +46,18 @@ app.post("/verify-account/:token", Auth.VerifyAccount);
 
 app.get(
   "/google/callback",
-  passport.authenticate("google", { session: false }),
+  (req, res, next) => {
+    passport.authenticate("google", { session: false }, (err, user) => {
+      if (err || !user) {
+        // Redirect to frontend with an error instead of 500
+        return res.redirect(
+          `${process.env.CLIENT_URL}/login?error=google_auth_failed`,
+        );
+      }
+      req.user = user;
+      next();
+    })(req, res, next);
+  },
   Auth.GoogleCallback,
 );
 
