@@ -169,6 +169,7 @@ async function PasswordResetRequest(req, res) {
 
 async function GoogleCallback(req, res) {
   try {
+    console.log(req.user);
     const token = AuthService.DigitalSignature(req.user.id, req.user.email);
 
     res.redirect(`${process.env.CLIENT_URL}/dashboard?token=${token}`);

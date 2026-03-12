@@ -18,6 +18,7 @@ export const AuthProvider = ({ children }) => {
       window.history.replaceState({}, "", "/dashboard");
     }
 
+    // Now fetch user (token is set before this call)
     api
       .get("/auth/me")
       .then(({ data }) => {
@@ -36,11 +37,19 @@ export const AuthProvider = ({ children }) => {
     };
   }, []);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("error") === "auth_failed") {
+      toast.error("Google sign-in failed. Please try again.");
+      window.history.replaceState({}, "", "/login");
+    }
+  }, []);
+
   const login = async (email, password) => {
     try {
       const { data } = await api.post("/auth/login", { email, password });
       localStorage.setItem("token", data.token);
-      setUser(data);
+      setUser(data.user);
     } catch (err) {
       console.error(err);
       throw err;
