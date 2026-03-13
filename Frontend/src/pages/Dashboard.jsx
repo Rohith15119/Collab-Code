@@ -49,7 +49,7 @@ export default function Dashboard() {
 
   const load = useCallback(async () => {
     try {
-      const { data } = await api.get("/session/my", { params: 100 });
+      const { data } = await api.get("/session/my", { params: { limit: 100 } });
       setSessions(data.sessions || []);
     } catch {
       setSessions([]);
