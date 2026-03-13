@@ -15,7 +15,15 @@ import VerifyEmailNotice from "./pages/VerifyEmailNotice";
 import VerifyAccount from "./pages/VerifyAccount";
 
 function App() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center text-white">
+        Loading...
+      </div>
+    );
+  }
 
   return (
     <BrowserRouter>
