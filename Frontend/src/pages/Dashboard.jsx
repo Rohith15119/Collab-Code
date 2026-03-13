@@ -38,7 +38,6 @@ export default function Dashboard() {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  // ✅ FIX: default matches the first <option> shown in the select ("Last Updated")
   const [sortBy, setSortBy] = useState("updatedAt");
   const [creating, setCreating] = useState(false);
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -50,7 +49,7 @@ export default function Dashboard() {
 
   const load = useCallback(async () => {
     try {
-      const { data } = await api.get("/session/my");
+      const { data } = await api.get("/session/my", { params: 100 });
       setSessions(data.sessions || []);
     } catch {
       setSessions([]);
@@ -59,16 +58,11 @@ export default function Dashboard() {
     }
   }, []);
 
-  // ✅ FIX 1: Reload every time the user navigates back to this page.
-  // location.key is unique per navigation event in React Router — this fires
-  // on every visit to /dashboard, replacing the broken window-focus approach
-  // which never triggered for in-app back-navigation.
   useEffect(() => {
     setLoading(true);
     load();
   }, [load, location.key]);
 
-  // Keep focus listener only for cross-tab / separate browser window switches
   useEffect(() => {
     const handleFocus = () => load();
     window.addEventListener("focus", handleFocus);
@@ -118,9 +112,6 @@ export default function Dashboard() {
     const term = debouncedSearch.toLowerCase();
     const secondaryKey = sortBy === "updatedAt" ? "createdAt" : "updatedAt";
 
-    // Both sorts are newest-first (descending) so switching between them
-    // always produces a visibly different order: updatedAt changes on every
-    // edit while createdAt stays fixed at creation time.
     return [...sessions]
       .filter((s) => (s.title || "").toLowerCase().includes(term))
       .sort((a, b) => {

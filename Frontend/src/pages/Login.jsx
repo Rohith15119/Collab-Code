@@ -10,8 +10,8 @@ export default function Login() {
   const [form, setForm] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [showResend, setShowResend] = useState(false); // 👈
-  const [resendLoading, setResendLoading] = useState(false); // 👈
+  const [showResend, setShowResend] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -36,7 +36,7 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setShowResend(false); // 👈 reset on each attempt
+    setShowResend(false);
     try {
       await login(form.email.trim().toLowerCase(), form.password);
       toast.success("Welcome back! 👋");
@@ -48,7 +48,6 @@ export default function Login() {
         "Login failed";
       toast.error(errorMsg);
       if (err.response?.status === 403 && errorMsg.includes("verify")) {
-        // 👈
         setShowResend(true);
       }
     } finally {
@@ -57,7 +56,6 @@ export default function Login() {
   };
 
   const handleResend = async () => {
-    // 👈
     setResendLoading(true);
     try {
       await api.post("/auth/resend-verification", {
@@ -126,7 +124,6 @@ export default function Login() {
             </button>
           </form>
 
-          {/* 👇 Resend verification — only shows after 403 error */}
           {showResend && (
             <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-xl text-center">
               <p className="text-yellow-400 text-sm mb-2">

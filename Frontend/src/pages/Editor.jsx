@@ -676,7 +676,7 @@ export default function Editor() {
       }
       if (e.key === "Escape") {
         e.preventDefault();
-        // Close modals/drawer first before anything else
+
         if (showShortcuts) {
           setShowShortcuts(false);
           return;

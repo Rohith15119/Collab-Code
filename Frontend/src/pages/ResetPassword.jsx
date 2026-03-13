@@ -8,6 +8,7 @@ export default function ResetPassword() {
 
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -54,23 +55,43 @@ export default function ResetPassword() {
         </p>
 
         <form onSubmit={handleReset} className="space-y-4">
-          <input
-            type="password"
-            placeholder="New Password"
-            required
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-            className="w-full px-4 py-3 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500"
-          />
+          <div className="relative">
+            <input
+              type={showPassword ? "text" : "password"}
+              placeholder="New Password"
+              required
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              className="w-full px-4 py-3 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500"
+            />
 
-          <input
-            type="password"
-            placeholder="Confirm Password"
-            required
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            className="w-full px-4 py-3 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500"
-          />
+            <button
+              type="button"
+              onClick={() => setShowPassword((prev) => !prev)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+            >
+              {showPassword ? "🙈" : "👁"}
+            </button>
+          </div>
+
+          <div className="relative">
+            <input
+              type={showPassword ? "text" : "password"}
+              placeholder="Confirm Password"
+              required
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="w-full px-4 py-3 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500"
+            />
+
+            <button
+              type="button"
+              onClick={() => setShowPassword((prev) => !prev)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+            >
+              {showPassword ? "🙈" : "👁"}
+            </button>
+          </div>
 
           <button
             type="submit"
