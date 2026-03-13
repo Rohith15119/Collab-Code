@@ -19,8 +19,28 @@ function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center text-white">
-        Loading...
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center relative overflow-hidden">
+        {/* background gradient glow */}
+        <div className="absolute w-[500px] h-[500px] bg-green-500/20 blur-[120px] rounded-full"></div>
+
+        {/* loading card */}
+        <div className="relative z-10 bg-gray-900/70 backdrop-blur-xl border border-gray-800 rounded-3xl px-10 py-12 flex flex-col items-center shadow-2xl">
+          {/* logo */}
+          <h1 className="text-3xl font-bold text-green-400 mb-6 tracking-wide">
+            ⚡ CollabCode
+          </h1>
+
+          {/* animated loader */}
+          <div className="relative w-14 h-14 mb-5">
+            <div className="absolute inset-0 rounded-full border-4 border-gray-700"></div>
+            <div className="absolute inset-0 rounded-full border-4 border-green-400 border-t-transparent animate-spin"></div>
+          </div>
+
+          {/* text */}
+          <p className="text-gray-400 text-sm tracking-wide">
+            Preparing your workspace...
+          </p>
+        </div>
       </div>
     );
   }
