@@ -21,7 +21,7 @@ function App() {
     return (
       <div className="min-h-screen bg-gray-950 flex items-center justify-center relative overflow-hidden">
         {/* background gradient glow */}
-        <div className="absolute w-[500px] h-[500px] bg-green-500/20 blur-[120px] rounded-full"></div>
+        <div className="absolute w-125 h-125 bg-green-500/20 blur-[120px] rounded-full"></div>
 
         {/* loading card */}
         <div className="relative z-10 bg-gray-900/70 backdrop-blur-xl border border-gray-800 rounded-3xl px-10 py-12 flex flex-col items-center shadow-2xl">
