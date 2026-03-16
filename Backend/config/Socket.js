@@ -48,8 +48,11 @@ async function initSocket(server) {
     });
 
     socket.on("code:change", ({ roomId, code, language }) => {
-      // broadcast to everyone else in the room, not back to sender
-      socket.to(roomId).emit("code:change", { code, language });
+      socket.to(roomId).emit("code:change", {
+        code,
+        language,
+        sender: socket.user.id,
+      });
     });
 
     socket.on("disconnect", () => {

@@ -391,6 +391,9 @@ export default function Editor() {
   const monaco = useMonaco();
   const { roomId } = useParams();
   const navigate = useNavigate();
+  const myUserId = JSON.parse(
+    atob(localStorage.getItem("token").split(".")[1]),
+  ).id;
 
   const [code, setCode] = useState(null);
   const [language, setLanguage] = useState(null);
@@ -430,12 +433,11 @@ export default function Editor() {
 
     socket.emit("join:session", roomId);
 
-    socket.on("code:change", ({ code: remoteCode, language: remoteLang }) => {
-      if (remoteLang !== undefined) setLanguage(remoteLang);
-      if (remoteCode !== undefined) {
-        suppressEmitRef.current = true; // flag before setCode
-        setCode(remoteCode);
-      }
+    socket.on("code:change", ({ code, language, sender }) => {
+      if (sender === myUserId) return;
+      suppressEmitRef.current = true;
+      setCode(code);
+      setLanguage(language);
     });
 
     return () => {
@@ -555,16 +557,26 @@ export default function Editor() {
     [code, language, title, roomId],
   );
 
+  const socketEmitTimer = useRef(null);
+
   const handleCodeChange = (value) => {
     if (suppressEmitRef.current) {
       suppressEmitRef.current = false;
       setCode(value);
       return;
     }
+
     setCode(value);
-    getSocket().emit("code:change", { roomId, code: value, language });
-    clearTimeout(autoSaveTimer.current);
-    autoSaveTimer.current = setTimeout(() => saveSession(value), 2000);
+
+    clearTimeout(socketEmitTimer.current);
+
+    socketEmitTimer.current = setTimeout(() => {
+      getSocket().emit("code:change", {
+        roomId,
+        code: value,
+        language,
+      });
+    }, 150);
   };
 
   const handleCopy = useCallback(() => {
