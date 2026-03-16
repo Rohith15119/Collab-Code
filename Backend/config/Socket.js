@@ -57,6 +57,25 @@ async function initSocket(server) {
       });
     });
 
+    const CHAR_DIFF_THRESHOLD = 10;
+
+    socket.on("session:reconcile", async ({ roomId, localCharCount }) => {
+      try {
+        const session = await Session.findOne({ roomId }); // your DB query
+        if (!session) return;
+        const canonicalLen = (session.code ?? "").length;
+        const diff = Math.abs(canonicalLen - localCharCount);
+        if (diff > CHAR_DIFF_THRESHOLD) {
+          socket.emit("session:reconcile:response", {
+            code: session.code,
+            language: session.language,
+          });
+        }
+      } catch (err) {
+        console.error("reconcile error", err);
+      }
+    });
+
     socket.on("disconnect", () => {
       console.log(`Disconnected: ${socket.user?.email}`);
     });

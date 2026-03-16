@@ -135,6 +135,31 @@ const COMPLEXITY_COLOR = {
   "O(n!)": "text-pink-600",
 };
 
+// ── Concurrent sync strategy ──────────────────────────────────────────────────
+//
+// LAYER 1 — Character-diff guard (fires on every incoming code:change event)
+//   Computes |incoming.length - local.length|. If > CHAR_DIFF_THRESHOLD,
+//   a meaningful concurrent edit is present that isn't reflected locally.
+//   The incoming code is force-applied immediately and a brief toast shown.
+//   Small diffs (≤ threshold) are applied normally via suppressEmitRef.
+//
+// LAYER 2 — Periodic reconciliation ping (safety net, every 5 s)
+//   Emits "session:reconcile" with the local char count as a lightweight
+//   checksum. The server compares against the stored canonical code and,
+//   if they differ by more than the threshold, replies with
+//   "session:reconcile:response" containing the full canonical code.
+//   The client applies it only when the user is not actively typing,
+//   avoiding cursor-jump interruptions.
+//
+//   ⚠️  Requires a small server-side addition — see the comment block at
+//   the very bottom of this file for the exact Socket.IO handler to add.
+//
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Minimum character-count difference to treat an incoming peer edit as a
+// meaningful concurrent modification and force-apply it.
+const CHAR_DIFF_THRESHOLD = 10;
+
 // ── Settings Drawer ───────────────────────────────────────────────────────────
 function SettingsDrawer({
   open,
@@ -390,7 +415,7 @@ export default function Editor() {
   const { roomId } = useParams();
   const navigate = useNavigate();
 
-  // FIX 1 (Critical): Safe JWT decode — crash-proof, redirects on bad token
+  // Safe JWT decode — crash-proof, redirects on bad token
   let myUserId = null;
   try {
     const token = localStorage.getItem("token");
@@ -406,7 +431,6 @@ export default function Editor() {
   const [code, setCode] = useState(null);
   const [language, setLanguage] = useState(null);
   const [isLoadingSession, setIsLoadingSession] = useState(true);
-
   const [theme, setTheme] = useState("vs-dark");
   const [fontSize, setFontSize] = useState(14);
   const [title, setTitle] = useState("Untitled Session");
@@ -426,46 +450,124 @@ export default function Editor() {
   const [mobilePanel, setMobilePanel] = useState("editor");
   const [showSettings, setShowSettings] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
-
-  // FIX 2 (Critical): Always-current code ref — prevents stale closure saves
-  const codeRef = useRef(null);
-  useEffect(() => {
-    codeRef.current = code;
-  }, [code]);
-
-  // FIX 5 (Minor): Use boolean state for prefs-loaded instead of ref+setTimeout
   const [prefsLoaded, setPrefsLoaded] = useState(false);
 
-  const lastAnalyzedRef = useRef({ code: null, language: null, result: null });
+  // Always-current refs — prevent stale closure bugs
+  const codeRef = useRef(null);
+  const languageRef = useRef(null);
   const themeRef = useRef(theme);
   const suppressEmitRef = useRef(false);
   const socketEmitTimer = useRef(null);
-  const languageRef = useRef(language);
+  const lastAnalyzedRef = useRef({ code: null, language: null, result: null });
 
+  useEffect(() => {
+    codeRef.current = code;
+  }, [code]);
   useEffect(() => {
     languageRef.current = language;
   }, [language]);
+  useEffect(() => {
+    themeRef.current = theme;
+  }, [theme]);
 
-  // FIX 4 (Warning): Store named handler ref so socket.off removes only our listener
+  // ── NEW: local-typing tracker ─────────────────────────────────────────────
+  // Prevents the reconcile response from overwriting the editor while the
+  // user is actively typing (which would jump their cursor).
+  const isLocallyTypingRef = useRef(false);
+  const localTypingTimer = useRef(null);
+
+  const markLocalTyping = useCallback(() => {
+    isLocallyTypingRef.current = true;
+    clearTimeout(localTypingTimer.current);
+    // Treat the user as "idle" after 1.5 s without a keystroke
+    localTypingTimer.current = setTimeout(() => {
+      isLocallyTypingRef.current = false;
+    }, 1500);
+  }, []);
+
+  // ── Socket setup with Layer 1 + Layer 2 sync ──────────────────────────────
   useEffect(() => {
     const socket = getSocket();
     if (!socket.connected) socket.connect();
-
     socket.emit("join:session", roomId);
 
-    const onCodeChange = ({ code, language, sender }) => {
+    // ── LAYER 1: Character-diff guard ────────────────────────────────────────
+    // Every incoming peer event computes |incomingLen - localLen|.
+    // If > CHAR_DIFF_THRESHOLD → meaningful concurrent edit → force-apply.
+    // If ≤ threshold → small routine edit → apply via suppressEmitRef.
+    const onCodeChange = ({
+      code: incomingCode,
+      language: incomingLang,
+      sender,
+    }) => {
       if (sender === myUserId) return;
-      suppressEmitRef.current = true;
-      setCode(code);
-      setLanguage(language);
+
+      const localLen = (codeRef.current ?? "").length;
+      const incomingLen = (incomingCode ?? "").length;
+      const charDiff = Math.abs(incomingLen - localLen);
+      const isMeaningfulDiff = charDiff > CHAR_DIFF_THRESHOLD;
+
+      if (isMeaningfulDiff) {
+        // Force-apply — peer has substantially different content
+        setCode(incomingCode);
+        setLanguage(incomingLang);
+        toast("↕ Synced with peer edits", {
+          icon: "🔄",
+          duration: 1800,
+          style: { fontSize: "12px" },
+        });
+      } else {
+        // Normal small peer update
+        suppressEmitRef.current = true;
+        setCode(incomingCode);
+        setLanguage(incomingLang);
+      }
+    };
+
+    // ── LAYER 2: Periodic reconciliation ping ─────────────────────────────
+    // Every 5 s, send our local char count to the server as a checksum.
+    // The server replies (to this socket only) if canonical code differs
+    // by more than CHAR_DIFF_THRESHOLD — catching any dropped events.
+    const reconcileInterval = setInterval(() => {
+      if (!languageRef.current) return; // session not loaded yet
+      socket.emit("session:reconcile", {
+        roomId,
+        localCharCount: (codeRef.current ?? "").length,
+      });
+    }, 5000);
+
+    const onReconcileResponse = ({
+      code: canonicalCode,
+      language: canonicalLang,
+    }) => {
+      // Skip if user is mid-keystroke — avoids cursor-jump interruptions
+      if (isLocallyTypingRef.current) return;
+
+      const localLen = (codeRef.current ?? "").length;
+      const canonicalLen = (canonicalCode ?? "").length;
+      const charDiff = Math.abs(canonicalLen - localLen);
+
+      // Re-check diff (state may have updated since we sent the ping)
+      if (charDiff > CHAR_DIFF_THRESHOLD) {
+        suppressEmitRef.current = true;
+        setCode(canonicalCode);
+        setLanguage(canonicalLang);
+        toast("↕ Auto-synced missed changes", {
+          icon: "🔄",
+          duration: 1800,
+          style: { fontSize: "12px" },
+        });
+      }
     };
 
     socket.on("code:change", onCodeChange);
+    socket.on("session:reconcile:response", onReconcileResponse);
 
     return () => {
       socket.emit("leave:session", roomId);
-      // FIX 4: Pass the exact handler ref — avoids removing all listeners globally
       socket.off("code:change", onCodeChange);
+      socket.off("session:reconcile:response", onReconcileResponse);
+      clearInterval(reconcileInterval);
     };
   }, [roomId]);
 
@@ -513,13 +615,8 @@ export default function Editor() {
       setTheme(p.theme ?? "vs-dark");
       setFontFamily(p.font ?? "Fira Code");
     }
-    // FIX 5: Set state directly — no setTimeout race condition
     setPrefsLoaded(true);
   }, []);
-
-  useEffect(() => {
-    themeRef.current = theme;
-  }, [theme]);
 
   useEffect(() => {
     if (monaco) loadTheme(monaco, theme);
@@ -547,7 +644,6 @@ export default function Editor() {
     return () => controller.abort();
   }, [roomId]);
 
-  // FIX 5: Guard with prefsLoaded state instead of a ref
   useEffect(() => {
     if (!prefsLoaded) return;
     localStorage.setItem(
@@ -573,7 +669,6 @@ export default function Editor() {
     prefsLoaded,
   ]);
 
-  // FIX 2 (Critical): saveSession reads from codeRef.current — always fresh, never stale
   const saveSession = useCallback(
     async (overrideCode) => {
       setIsSaving(true);
@@ -593,6 +688,9 @@ export default function Editor() {
   );
 
   const handleCodeChange = (value) => {
+    // Track that the user is actively typing so Layer 2 doesn't interrupt
+    markLocalTyping();
+
     if (suppressEmitRef.current) {
       suppressEmitRef.current = false;
       setCode(value);
@@ -601,7 +699,7 @@ export default function Editor() {
 
     setCode(value);
 
-    // FIX 3 (Warning): Guard against emitting before session is loaded (language === null)
+    // Guard against emitting before session load (language === null)
     clearTimeout(socketEmitTimer.current);
     socketEmitTimer.current = setTimeout(() => {
       if (!languageRef.current) return;
@@ -689,7 +787,7 @@ export default function Editor() {
       return;
     }
 
-    // FIX 6 (Warning): Use encodeURIComponent-safe btoa — handles non-Latin characters
+    // encodeURIComponent-safe btoa — handles non-Latin characters
     let cacheKey;
     try {
       cacheKey = `${currentLang}__${btoa(unescape(encodeURIComponent(currentCode)))}__${btoa(unescape(encodeURIComponent(userInput || "")))}`;
@@ -774,7 +872,7 @@ export default function Editor() {
         }
         if (output) {
           setOutput(null);
-          setMobilePanel("editor");
+          setMobilePanel("output");
         } else {
           saveSession();
           toast.success("Saved! ✅");
@@ -818,7 +916,6 @@ export default function Editor() {
     >
       {/* ── TOP BAR ── */}
       <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 px-3 py-2 bg-gray-900 border-b border-gray-800">
-        {/* Left: back + title */}
         <div className="flex items-center gap-2 min-w-0">
           <button
             onClick={async () => {
@@ -855,13 +952,11 @@ export default function Editor() {
           )}
         </div>
 
-        {/* Center: language + font size */}
         <div className="flex items-center gap-1.5">
           <select
             value={language ?? ""}
             onChange={(e) => {
               const newLang = e.target.value;
-              // FIX 2 (Critical): Stash from codeRef.current — always the latest value
               const savedCode =
                 codeByLanguage[newLang] || LANGUAGE_TEMPLATES[newLang];
               setCodeByLanguage((prev) => ({
@@ -897,9 +992,7 @@ export default function Editor() {
           </select>
         </div>
 
-        {/* Right: action buttons */}
         <div className="flex items-center gap-1.5 flex-wrap">
-          {/* Copy */}
           <button
             onClick={handleCopy}
             className="bg-gray-800 border border-gray-700 hover:bg-gray-700 hover:border-green-500 text-xs px-3 py-1.5 rounded-xl font-medium transition-all hidden sm:flex items-center gap-1"
@@ -913,7 +1006,6 @@ export default function Editor() {
             📋
           </button>
 
-          {/* Download */}
           <button
             onClick={handleDownload}
             className="bg-gray-800 border border-gray-700 hover:bg-gray-700 hover:border-green-500 text-xs px-3 py-1.5 rounded-xl font-medium transition-all hidden sm:flex items-center gap-1"
@@ -927,7 +1019,6 @@ export default function Editor() {
             ⬇️
           </button>
 
-          {/* Complexity */}
           <button
             onClick={analyzeComplexity}
             disabled={isAnalyzing}
@@ -946,7 +1037,6 @@ export default function Editor() {
             📊
           </button>
 
-          {/* Shortcuts */}
           <button
             onClick={() => setShowShortcuts(true)}
             title="Keyboard shortcuts"
@@ -961,7 +1051,6 @@ export default function Editor() {
             ⌨️
           </button>
 
-          {/* Settings */}
           <button
             onClick={() => setShowSettings(true)}
             title="Editor settings"
@@ -976,7 +1065,6 @@ export default function Editor() {
             ⚙️
           </button>
 
-          {/* Save */}
           <button
             onClick={async () => {
               await saveSession();
@@ -991,7 +1079,6 @@ export default function Editor() {
             </span>
           </button>
 
-          {/* Run */}
           <button
             onClick={handleRun}
             disabled={isRunning}
@@ -1034,7 +1121,7 @@ export default function Editor() {
         </div>
       )}
 
-      {/* ── MOBILE PANEL TABS (only when output exists) ── */}
+      {/* ── MOBILE PANEL TABS ── */}
       {output && (
         <div className="shrink-0 flex border-b border-gray-800 bg-gray-900 md:hidden">
           {["editor", "input", "output"].map((panel) => (
@@ -1059,7 +1146,6 @@ export default function Editor() {
 
       {/* ── MAIN CONTENT ── */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
-        {/* Editor */}
         <div
           className={`
             min-h-0 min-w-0 overflow-hidden
@@ -1097,14 +1183,11 @@ export default function Editor() {
           </div>
         </div>
 
-        {/* Input + Output panels */}
         {output && (
           <>
-            {/* Custom Input */}
             <div
               className={`
-                border-gray-800 bg-gray-950 flex flex-col
-                flex-1 min-h-0 min-w-0
+                border-gray-800 bg-gray-950 flex flex-col flex-1 min-h-0 min-w-0
                 md:flex md:w-[22%] lg:w-[20%] md:flex-none md:border-l
                 ${mobilePanel === "input" ? "flex" : "hidden md:flex"}
               `}
@@ -1120,11 +1203,9 @@ export default function Editor() {
               />
             </div>
 
-            {/* Output */}
             <div
               className={`
-                border-gray-800 bg-gray-950 flex flex-col
-                flex-1 min-h-0 min-w-0
+                border-gray-800 bg-gray-950 flex flex-col flex-1 min-h-0 min-w-0
                 md:flex md:w-[28%] lg:w-[25%] md:flex-none md:border-l
                 ${mobilePanel === "output" ? "flex" : "hidden md:flex"}
               `}
@@ -1148,7 +1229,6 @@ export default function Editor() {
                 <button
                   onClick={() => {
                     setOutput(null);
-                    // FIX 7 (Minor): Reset to "output" so next run result is immediately visible
                     setMobilePanel("output");
                   }}
                   className="text-gray-400 hover:text-white text-base leading-none"
@@ -1164,7 +1244,6 @@ export default function Editor() {
         )}
       </div>
 
-      {/* ── Settings Drawer ── */}
       <SettingsDrawer
         open={showSettings}
         onClose={() => setShowSettings(false)}
@@ -1184,7 +1263,6 @@ export default function Editor() {
         setLigatures={setLigatures}
       />
 
-      {/* ── Shortcuts Modal ── */}
       <ShortcutsModal
         open={showShortcuts}
         onClose={() => setShowShortcuts(false)}
