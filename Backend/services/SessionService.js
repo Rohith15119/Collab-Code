@@ -29,7 +29,7 @@ const Get_Session = async (roomId) => {
 
 const UpdateSession = async (roomId, Userid, data) => {
   return Session.findOneAndUpdate(
-    { roomId: roomId, ownerId: Userid },
+    { roomId: roomId },
     { $set: data },
     { returnDocument: "after", lean: true },
   );

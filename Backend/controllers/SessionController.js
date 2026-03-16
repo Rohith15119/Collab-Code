@@ -84,16 +84,16 @@ async function EditSession(req, res) {
       return res.status(400).json({ error: "Session not found " });
 
     const isOwner = req.user.id === session_find.ownerId;
-    const isShared = session.sharedWith?.includes(req.user.id);
+    const isShared = session_find.sharedWith?.includes(req.user.id);
 
     if (!isOwner && !isShared)
       return res.status(400).json({ error: "Access Denied" });
 
     const $set = {};
     if (code !== undefined) $set.code = code;
-    if (language !== undefined) $set.language = language;
-    if (title !== undefined) $set.title = title;
-    if (fontSize !== undefined) $set.fontSize = fontSize;
+    if (isOwner && language !== undefined) $set.language = language;
+    if (isOwner && title !== undefined) $set.title = title;
+    if (isOwner && fontSize !== undefined) $set.fontSize = fontSize;
 
     if (Object.keys($set).length === 0)
       return res.status(400).json({ error: "No fields provided to update" });
