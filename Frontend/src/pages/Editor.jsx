@@ -161,12 +161,10 @@ function SettingsDrawer({
 
   return (
     <>
-      {/* Backdrop */}
       {open && (
         <div className="fixed inset-0 z-40 bg-black/40" onClick={onClose} />
       )}
 
-      {/* Drawer */}
       <div
         className={`fixed top-0 right-0 z-50 h-full w-72 bg-gray-900 border-l border-gray-700 shadow-2xl flex flex-col transition-transform duration-200 ${
           open ? "translate-x-0" : "translate-x-full"
@@ -391,9 +389,19 @@ export default function Editor() {
   const monaco = useMonaco();
   const { roomId } = useParams();
   const navigate = useNavigate();
-  const myUserId = JSON.parse(
-    atob(localStorage.getItem("token").split(".")[1]),
-  ).id;
+
+  // FIX 1 (Critical): Safe JWT decode — crash-proof, redirects on bad token
+  let myUserId = null;
+  try {
+    const token = localStorage.getItem("token");
+    if (token) {
+      myUserId = JSON.parse(atob(token.split(".")[1])).id;
+    } else {
+      navigate("/login");
+    }
+  } catch {
+    navigate("/login");
+  }
 
   const [code, setCode] = useState(null);
   const [language, setLanguage] = useState(null);
@@ -416,39 +424,58 @@ export default function Editor() {
   const [complexity, setComplexity] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [mobilePanel, setMobilePanel] = useState("editor");
-
-  // NEW: settings & shortcuts visibility
   const [showSettings, setShowSettings] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
 
+  // FIX 2 (Critical): Always-current code ref — prevents stale closure saves
+  const codeRef = useRef(null);
+  useEffect(() => {
+    codeRef.current = code;
+  }, [code]);
+
+  // FIX 5 (Minor): Use boolean state for prefs-loaded instead of ref+setTimeout
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
+
   const lastAnalyzedRef = useRef({ code: null, language: null, result: null });
-  const isPrefsLoaded = useRef(false);
-  const autoSaveTimer = useRef(null);
   const themeRef = useRef(theme);
   const suppressEmitRef = useRef(false);
+  const socketEmitTimer = useRef(null);
+  const languageRef = useRef(language);
 
+  useEffect(() => {
+    languageRef.current = language;
+  }, [language]);
+
+  // FIX 4 (Warning): Store named handler ref so socket.off removes only our listener
   useEffect(() => {
     const socket = getSocket();
     if (!socket.connected) socket.connect();
 
     socket.emit("join:session", roomId);
 
-    socket.on("code:change", ({ code, language, sender }) => {
+    const onCodeChange = ({ code, language, sender }) => {
       if (sender === myUserId) return;
       suppressEmitRef.current = true;
       setCode(code);
       setLanguage(language);
-    });
+    };
+
+    socket.on("code:change", onCodeChange);
 
     return () => {
       socket.emit("leave:session", roomId);
-      socket.off("code:change");
+      // FIX 4: Pass the exact handler ref — avoids removing all listeners globally
+      socket.off("code:change", onCodeChange);
     };
   }, [roomId]);
 
   const analyzeComplexity = useCallback(async () => {
     const cached = lastAnalyzedRef.current;
-    if (cached.code === code && cached.language === language && cached.result) {
+    if (
+      cached.code === codeRef.current &&
+      cached.language === languageRef.current &&
+      cached.result
+    ) {
       setIsAnalyzing(true);
       await new Promise((r) => setTimeout(r, 600));
       setComplexity(cached.result);
@@ -459,23 +486,20 @@ export default function Editor() {
     setComplexity(null);
     try {
       const { data } = await api.post("/analyze-complexity", {
-        code,
-        language,
+        code: codeRef.current,
+        language: languageRef.current,
       });
       setComplexity(data);
-      lastAnalyzedRef.current = { code, language, result: data };
+      lastAnalyzedRef.current = {
+        code: codeRef.current,
+        language: languageRef.current,
+        result: data,
+      };
     } catch {
       setComplexity({ time: "?", space: "?", reason: "Analysis failed." });
     }
     setIsAnalyzing(false);
-  }, [code, language]);
-
-  useEffect(
-    () => () => {
-      if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
-    },
-    [],
-  );
+  }, []);
 
   useEffect(() => {
     const prefs = localStorage.getItem("editorPrefs");
@@ -489,14 +513,14 @@ export default function Editor() {
       setTheme(p.theme ?? "vs-dark");
       setFontFamily(p.font ?? "Fira Code");
     }
-    setTimeout(() => {
-      isPrefsLoaded.current = true;
-    }, 0);
+    // FIX 5: Set state directly — no setTimeout race condition
+    setPrefsLoaded(true);
   }, []);
 
   useEffect(() => {
     themeRef.current = theme;
   }, [theme]);
+
   useEffect(() => {
     if (monaco) loadTheme(monaco, theme);
   }, [theme, monaco]);
@@ -523,8 +547,9 @@ export default function Editor() {
     return () => controller.abort();
   }, [roomId]);
 
+  // FIX 5: Guard with prefsLoaded state instead of a ref
   useEffect(() => {
-    if (!isPrefsLoaded.current) return;
+    if (!prefsLoaded) return;
     localStorage.setItem(
       "editorPrefs",
       JSON.stringify({
@@ -537,15 +562,25 @@ export default function Editor() {
         font: fontFamily,
       }),
     );
-  }, [fontSize, tabSize, wordWrap, minimap, ligatures, theme, fontFamily]);
+  }, [
+    fontSize,
+    tabSize,
+    wordWrap,
+    minimap,
+    ligatures,
+    theme,
+    fontFamily,
+    prefsLoaded,
+  ]);
 
+  // FIX 2 (Critical): saveSession reads from codeRef.current — always fresh, never stale
   const saveSession = useCallback(
-    async (currentCode = code) => {
+    async (overrideCode) => {
       setIsSaving(true);
       try {
         await api.put(`/session/${roomId}`, {
-          code: currentCode,
-          language,
+          code: overrideCode !== undefined ? overrideCode : codeRef.current,
+          language: languageRef.current,
           title,
         });
       } catch {
@@ -554,10 +589,8 @@ export default function Editor() {
         setIsSaving(false);
       }
     },
-    [code, language, title, roomId],
+    [roomId, title],
   );
-
-  const socketEmitTimer = useRef(null);
 
   const handleCodeChange = (value) => {
     if (suppressEmitRef.current) {
@@ -568,21 +601,22 @@ export default function Editor() {
 
     setCode(value);
 
+    // FIX 3 (Warning): Guard against emitting before session is loaded (language === null)
     clearTimeout(socketEmitTimer.current);
-
     socketEmitTimer.current = setTimeout(() => {
+      if (!languageRef.current) return;
       getSocket().emit("code:change", {
         roomId,
         code: value,
-        language,
+        language: languageRef.current,
       });
     }, 150);
   };
 
   const handleCopy = useCallback(() => {
-    navigator.clipboard.writeText(code);
+    navigator.clipboard.writeText(codeRef.current);
     toast.success("Copied! 📋");
-  }, [code]);
+  }, []);
 
   const handleDownload = useCallback(() => {
     const ext = {
@@ -608,14 +642,14 @@ export default function Editor() {
       sql: "sql",
       bash: "sh",
     };
-    const blob = new Blob([code], { type: "text/plain" });
+    const blob = new Blob([codeRef.current], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${title}.${ext[language] || "txt"}`;
+    a.download = `${title}.${ext[languageRef.current] || "txt"}`;
     a.click();
     toast.success("Downloaded! 💾");
-  }, [code, title, language]);
+  }, [title]);
 
   const handleRun = useCallback(async () => {
     setIsRunning(true);
@@ -645,20 +679,32 @@ export default function Editor() {
       sql: 82,
       bash: 46,
     };
-    const langId = langMap[language];
+    const currentCode = codeRef.current;
+    const currentLang = languageRef.current;
+    const langId = langMap[currentLang];
+
     if (!langId) {
-      setOutput({ status: "error", text: `${language} not supported yet` });
+      setOutput({ status: "error", text: `${currentLang} not supported yet` });
       setIsRunning(false);
       return;
     }
-    const cacheKey = `${language}__${btoa(code)}__${btoa(userInput || "")}`;
+
+    // FIX 6 (Warning): Use encodeURIComponent-safe btoa — handles non-Latin characters
+    let cacheKey;
+    try {
+      cacheKey = `${currentLang}__${btoa(unescape(encodeURIComponent(currentCode)))}__${btoa(unescape(encodeURIComponent(userInput || "")))}`;
+    } catch {
+      cacheKey = null;
+    }
+
     const storedCache = JSON.parse(localStorage.getItem("runCache") || "{}");
-    if (storedCache[cacheKey]) {
+    if (cacheKey && storedCache[cacheKey]) {
       await new Promise((r) => setTimeout(r, 400));
       setOutput(storedCache[cacheKey]);
       setIsRunning(false);
       return;
     }
+
     try {
       const res = await fetch(
         "https://ce.judge0.com/submissions?base64_encoded=true&wait=true",
@@ -666,7 +712,7 @@ export default function Editor() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            source_code: btoa(unescape(encodeURIComponent(code))),
+            source_code: btoa(unescape(encodeURIComponent(currentCode))),
             language_id: langId,
             stdin: btoa(unescape(encodeURIComponent(userInput || ""))),
           }),
@@ -692,15 +738,17 @@ export default function Editor() {
         text: `${result.status?.description}\n\n${outputText}`,
       };
       setOutput(finalOutput);
-      storedCache[cacheKey] = finalOutput;
-      const keys = Object.keys(storedCache);
-      if (keys.length > 50) delete storedCache[keys[0]];
-      localStorage.setItem("runCache", JSON.stringify(storedCache));
+      if (cacheKey) {
+        storedCache[cacheKey] = finalOutput;
+        const keys = Object.keys(storedCache);
+        if (keys.length > 50) delete storedCache[keys[0]];
+        localStorage.setItem("runCache", JSON.stringify(storedCache));
+      }
     } catch {
       setOutput({ status: "error", text: "Failed to run code." });
     }
     setIsRunning(false);
-  }, [code, language, userInput]);
+  }, [userInput]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -716,7 +764,6 @@ export default function Editor() {
       }
       if (e.key === "Escape") {
         e.preventDefault();
-
         if (showShortcuts) {
           setShowShortcuts(false);
           return;
@@ -811,12 +858,16 @@ export default function Editor() {
         {/* Center: language + font size */}
         <div className="flex items-center gap-1.5">
           <select
-            value={language}
+            value={language ?? ""}
             onChange={(e) => {
               const newLang = e.target.value;
+              // FIX 2 (Critical): Stash from codeRef.current — always the latest value
               const savedCode =
                 codeByLanguage[newLang] || LANGUAGE_TEMPLATES[newLang];
-              setCodeByLanguage((prev) => ({ ...prev, [language]: code }));
+              setCodeByLanguage((prev) => ({
+                ...prev,
+                [language]: codeRef.current,
+              }));
               setCode(savedCode);
               setLanguage(newLang);
               getSocket().emit("code:change", {
@@ -895,7 +946,7 @@ export default function Editor() {
             📊
           </button>
 
-          {/* ── Shortcuts button (NEW) ── */}
+          {/* Shortcuts */}
           <button
             onClick={() => setShowShortcuts(true)}
             title="Keyboard shortcuts"
@@ -910,7 +961,7 @@ export default function Editor() {
             ⌨️
           </button>
 
-          {/* ── Settings button (NEW) ── */}
+          {/* Settings */}
           <button
             onClick={() => setShowSettings(true)}
             title="Editor settings"
@@ -1097,7 +1148,8 @@ export default function Editor() {
                 <button
                   onClick={() => {
                     setOutput(null);
-                    setMobilePanel("editor");
+                    // FIX 7 (Minor): Reset to "output" so next run result is immediately visible
+                    setMobilePanel("output");
                   }}
                   className="text-gray-400 hover:text-white text-base leading-none"
                 >
@@ -1112,7 +1164,7 @@ export default function Editor() {
         )}
       </div>
 
-      {/* ── Settings Drawer (NEW) ── */}
+      {/* ── Settings Drawer ── */}
       <SettingsDrawer
         open={showSettings}
         onClose={() => setShowSettings(false)}
@@ -1132,7 +1184,7 @@ export default function Editor() {
         setLigatures={setLigatures}
       />
 
-      {/* ── Shortcuts Modal (NEW) ── */}
+      {/* ── Shortcuts Modal ── */}
       <ShortcutsModal
         open={showShortcuts}
         onClose={() => setShowShortcuts(false)}
