@@ -1,6 +1,7 @@
 const Session = require("../models/Session");
 const User = require("../models/User");
 const SharedService = require("../services/SharedViewService");
+const { getIO } = require("../config/Socket");
 
 async function attachOwnerEmails(sessions) {
   const ownerIds = [...new Set(sessions.map((s) => s.ownerId))];
@@ -120,6 +121,23 @@ async function AddSharedEditorials(req, res) {
       { $addToSet: { sharedWith: targetUser.id } },
     );
 
+    //notify the added user
+    getIO()
+      .to(`user:${targetUser.id}`)
+      .emit("share:received", {
+        roomId,
+        ownerEmail: req.user.email,
+        ownerName: req.user.name,
+        sessionName: session.name ?? roomId,
+      });
+
+    //Notify the everyone who had been inside the room.
+    getIO().to(roomId).emit("collaborator:added", {
+      id: targetUser.id,
+      email: normalizedEmail,
+      name: targetUser.name,
+    });
+
     return res.json({
       message: `Session shared with ${normalizedEmail}`,
       sharedWithEmail: normalizedEmail,
@@ -167,6 +185,21 @@ async function DeleteSharedEditorials(req, res) {
     if (result.modifiedCount === 0) {
       return res.status(404).json({ message: "This user didn't have access" });
     }
+
+    // ✅ Tell the removed user their access is gone
+    getIO()
+      .to(`user:${targetUser.id}`)
+      .emit("share:revoked", {
+        roomId,
+        ownerEmail: req.user.email,
+        sessionName: session.name ?? roomId,
+      });
+
+    // ✅ Notify the session room a collaborator was removed
+    getIO().to(roomId).emit("collaborator:removed", {
+      userId: targetUser.id,
+      email: normalizedEmail,
+    });
 
     return res.json({ message: `Access revoked for ${normalizedEmail}` });
   } catch (err) {

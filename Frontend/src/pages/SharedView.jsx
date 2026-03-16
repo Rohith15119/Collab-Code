@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import api from "../api/index";
 import toast from "react-hot-toast";
 import Navbar from "../components/Navbar";
+import { useSocket } from "../socket/useSocket";
 
 // ── Language badge colours (same as SessionCard presumably) ──────────────────
 const LANG_COLORS = {
@@ -27,9 +28,46 @@ export default function SharedView() {
   const [received, setReceived] = useState([]);
   const [sent, setSent] = useState([]);
   const [loading, setLoading] = useState(true);
-
   // Share modal state
   const [shareModal, setShareModal] = useState(null); // session object | null
+
+  // Someone shared a session WITH the current user
+  const onShareReceived = useCallback(({ roomId, ownerEmail, sessionName }) => {
+    toast.success(`${ownerEmail} shared "${sessionName}" with you`);
+    // Re-fetch received list to get the full session object
+    api.get("/sharing/shared/received").then((res) => {
+      setReceived(res.data.sessions ?? []);
+    });
+  }, []);
+
+  // Owner revoked current user's access
+  const onShareRevoked = useCallback(({ roomId, ownerEmail, sessionName }) => {
+    toast.error(`Your access to "${sessionName}" was revoked`);
+    setReceived((prev) => prev.filter((s) => s.roomId !== roomId));
+  }, []);
+
+  const onCollaboratorAdded = useCallback(({ id, email, name }) => {
+    // UI already updated optimistically in onShared callback — no action needed
+    // but you could add a toast if you want
+  }, []);
+
+  const onCollaboratorRemoved = useCallback(({ userId, email }) => {
+    setSent((prev) =>
+      prev
+        .map((s) => ({
+          ...s,
+          sharedWith: s.sharedWith?.filter((e) => e !== email) ?? [],
+        }))
+        .filter((s) => s.sharedWith?.length > 0),
+    );
+  }, []);
+
+  useSocket({
+    "share:received": onShareReceived,
+    "share:revoked": onShareRevoked,
+    "collaborator:added": onCollaboratorAdded,
+    "collaborator:removed": onCollaboratorRemoved,
+  });
 
   useEffect(() => {
     let mounted = true;

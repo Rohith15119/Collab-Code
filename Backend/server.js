@@ -1,8 +1,10 @@
 const express = require("express");
 const dotenv = require("dotenv");
 const cors = require("cors");
+const http = require("http");
 const helmet = require("helmet");
 const cookieParser = require("cookie-parser");
+const { initSocket } = require("./config/Socket");
 
 dotenv.config();
 
@@ -12,8 +14,10 @@ const sessionRoutes = require("./routes/Sessions");
 const ProfileRoutes = require("./routes/Profile");
 const analyzeRouter = require("./routes/analyse");
 const compression = require("compression");
-const app = express();
 const pinoHttp = require("pino-http")();
+
+const app = express();
+const server = http.createServer(app);
 
 app.use(pinoHttp);
 app.use(helmet());
@@ -156,7 +160,9 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: "Internal Server Error" });
 });
 
-app.listen(PORT, () => {
+initSocket(server);
+
+server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
 
