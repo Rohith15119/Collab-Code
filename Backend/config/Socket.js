@@ -48,10 +48,12 @@ async function initSocket(server) {
     });
 
     socket.on("code:change", ({ roomId, code, language }) => {
-      socket.to(roomId).emit("code:change", {
+      // FIXED: Broadcast to ALL clients in the room including the sender
+      io.to(roomId).emit("code:change", {
         code,
         language,
         sender: socket.user.id,
+        timestamp: Date.now(),
       });
     });
 
