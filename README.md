@@ -38,8 +38,7 @@
 
 👁️ Shared View
 
-![8](https://github.com/user-attachments/assets/a71a8abe-789e-464b-abce-00cf542b2cd9)
----
+## ![8](https://github.com/user-attachments/assets/a71a8abe-789e-464b-abce-00cf542b2cd9)
 
 ## 📖 About
 
@@ -81,38 +80,50 @@ Collab-Code/
 ```
 Backend/
 ├── config/
-│   ├── database.js        # MongoDB connection setup
-│   ├── mongo.js           # Mongoose configuration
-│   └── passport.js        # Passport.js JWT auth strategy
+│   ├── database.js              # MongoDB connection setup
+│   ├── Google.js                # Passport.js Google OAuth strategy
+│   └── mongo.js                 # Mongoose configuration
 │
 ├── controllers/
-│   └── DB.js              # Core database logic and query handlers
+│   ├── AuthController.js        # Auth-related logic and error handling
+│   ├── ComplexityController.js  # Time and space complexity analyser logic
+│   ├── Database.js              # Core database logic and query handlers
+│   ├── ProfileController.js     # Profile settings — username and email logic
+│   ├── RedisController.js       # Redis caching optimisation logic
+│   ├── SessionController.js     # Individual user session logic and queries
+│   └── SharedViewController.js  # Shared view logic — sockets, etc.
 │
 ├── middleware/
-│   └── auth.js            # JWT verification — protects private routes
+│   ├── auth.js                  # JWT verification — protects private routes
+│   └── role.js                  # Role-based access control middleware
 │
 ├── models/
-│   ├── Session.js         # Session schema (code, language, owner, created date)
-│   └── User.js            # User schema (name, email, hashed password)
+│   ├── Session.js               # Session schema (code, language, owner, created date)
+│   └── User.js                  # User schema (name, email, hashed password)
 │
 ├── routes/
-│   ├── Auth.js            # Register, login, logout
-│   ├── Profile.js         # View and update user profile
-│   ├── ProtectedRoute.js  # Auth-gated route handler
-│   ├── SessionInsert.js   # Create, update, delete sessions
-│   ├── sharedView.js      # Serve shared view of a session to external users
-│   └── analyse.js         # Code execution / analysis endpoints
+│   ├── analyse.js               # Code execution / analysis endpoints
+│   ├── Auth.js                  # Register, login, logout
+│   ├── Profile.js               # View and update user profile
+│   ├── Sessions.js              # Create, update, delete sessions
+│   └── sharedView.js            # Serve shared view of a session to external users
 │
 ├── services/
-│   └── EmailService.js    # Nodemailer — password reset & notification emails
+│   ├── AuthService.js           # Auth business logic and helpers
+│   ├── ComplexityService.js     # Complexity analysis service layer
+│   ├── EmailService.js          # Nodemailer — password reset & notification emails
+│   ├── Limiter.js               # Rate limiting service
+│   ├── ProfileService.js        # Profile update service logic
+│   ├── SessionService.js        # Session management service layer
+│   └── SharedViewService.js     # Shared view service and socket helpers
 │
 ├── Tests/
-│   └── SqlconnectionTest.js  # Database connection health test
+│   └── SqlconnectionTest.js     # Database connection health test
 │
 ├── validators/
-│   └── AuthValidator.js   # Input validation for auth routes
+│   └── AuthValidator.js         # Input validation for auth routes
 │
-├── server.js              # Express app entry point — mounts all routes
+├── server.js                    # Express app entry point — mounts all routes
 └── package.json
 ```
 
@@ -167,6 +178,7 @@ Browser (React + Vite)
 Express Server  ──── server.js
         │
         ├── auth.js middleware        ← Verifies JWT on every protected request
+        ├── role.js middleware        ← Role-based access control
         │
         ├── POST /api/auth/register   ← Create account
         ├── POST /api/auth/login      ← Authenticate & receive JWT
@@ -193,18 +205,18 @@ Express Server  ──── server.js
 
 ## 🛠️ Tech Stack
 
-| Layer         | Technology                             |
-|---------------|----------------------------------------|
-| Frontend      | React.js, Vite                         |
-| Styling       | TailWind CSS                           |
-| State/Context | React Context API                      |
-| HTTP Client   | Axios                                  |
-| Backend       | Node.js, Express.js                    |
-| Auth          | Passport.js, JWT                       |
-| Database      | MongoDB, Mongoose                      |
-| Email         | Nodemailer, Resend                     |
-| Deployment    | Vercel (Frontend), Render (Backend)    |
-| Language      | JavaScript (99.7%)                     |
+| Layer         | Technology                          |
+| ------------- | ----------------------------------- |
+| Frontend      | React.js, Vite                      |
+| Styling       | TailWind CSS                        |
+| State/Context | React Context API                   |
+| HTTP Client   | Axios                               |
+| Backend       | Node.js, Express.js                 |
+| Auth          | Passport.js, JWT                    |
+| Database      | MongoDB, Mongoose                   |
+| Email         | Nodemailer, Resend, BREVO           |
+| Deployment    | Vercel (Frontend), Render (Backend) |
+| Language      | JavaScript (99.7%)                  |
 
 ---
 
@@ -214,7 +226,7 @@ Express Server  ──── server.js
 
 - Node.js ≥ 16
 - MongoDB (local or Atlas)
-- PostreSql (superbase or any other)
+- PostgreSQL (Supabase or any other)
 - npm or yarn
 
 ### 1. Clone the repository
@@ -236,7 +248,7 @@ Create a `.env` file in `/Backend`:
 ```env
 PORT=5000
 DATABASE_URL=database_string
-JWT_SECRET==ur_secret
+JWT_SECRET=ur_secret
 MONGO_URL=mongo_db_atlas or mongo_db_local
 GOOGLE_CLIENT_ID=client_id
 GOOGLE_CLIENT_SECRET=client_secret
@@ -245,7 +257,7 @@ CLIENT_URL=http://localhost:5173
 GROQ_API_KEY=api_key_
 BACKEND_URL=http://localhost:5000
 REDIS_URL=redis_url
-RESEND_API_KEY=api_key_resend
+BREVO_API_KEY=your_api_key
 ```
 
 ```bash
