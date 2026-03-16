@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import MonacoEditor, { useMonaco } from "@monaco-editor/react";
 import toast from "react-hot-toast";
 import api from "../api/index";
+import { getSocket } from "../socket/index";
 
 const LANGUAGES = [
   "javascript",
@@ -421,6 +422,25 @@ export default function Editor() {
   const isPrefsLoaded = useRef(false);
   const autoSaveTimer = useRef(null);
   const themeRef = useRef(theme);
+  const isRemoteChange = useRef(false);
+
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket.connected) socket.connect();
+
+    socket.emit("join:session", roomId);
+
+    socket.on("code:change", ({ code: remoteCode, language: remoteLang }) => {
+      isRemoteChange.current = true;
+      if (remoteCode !== undefined) setCode(remoteCode);
+      if (remoteLang !== undefined) setLanguage(remoteLang);
+    });
+
+    return () => {
+      socket.emit("leave:session", roomId);
+      socket.off("code:change");
+    };
+  }, [roomId]);
 
   const analyzeComplexity = useCallback(async () => {
     const cached = lastAnalyzedRef.current;
@@ -534,7 +554,12 @@ export default function Editor() {
   );
 
   const handleCodeChange = (value) => {
+    if (isRemoteChange.current) {
+      isRemoteChange.current = false;
+      return;
+    }
     setCode(value);
+    getSocket().emit("code:change", { roomId, code: value, language });
     clearTimeout(autoSaveTimer.current);
     autoSaveTimer.current = setTimeout(() => saveSession(value), 2000);
   };
@@ -779,6 +804,11 @@ export default function Editor() {
               setCodeByLanguage((prev) => ({ ...prev, [language]: code }));
               setCode(savedCode);
               setLanguage(newLang);
+              getSocket().emit("code:change", {
+                roomId,
+                code: savedCode,
+                language: newLang,
+              }); // ← add this
             }}
             className="bg-gray-700 text-white text-xs px-2 py-1.5 rounded-lg outline-none max-w-27.5"
           >

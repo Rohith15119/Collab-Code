@@ -47,6 +47,11 @@ async function initSocket(server) {
       socket.to(roomId).emit("presence:left", { userId: socket.user.id });
     });
 
+    socket.on("code:change", ({ roomId, code, language }) => {
+      // broadcast to everyone else in the room, not back to sender
+      socket.to(roomId).emit("code:change", { code, language });
+    });
+
     socket.on("disconnect", () => {
       console.log(`Disconnected: ${socket.user?.email}`);
     });
