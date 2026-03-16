@@ -13,9 +13,7 @@ async function initSocket(server) {
 
   io.use((socket, next) => {
     //MIDDLEWARE
-    const token = socket.handshake.headers?.token;
-
-    console.log(socket);
+    const token = socket.handshake.auth?.token;
 
     if (!token) {
       return next(new Error("No Token Found"));

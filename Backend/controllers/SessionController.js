@@ -63,7 +63,10 @@ async function FetchSession(req, res) {
       session.ownerId.toString() === req.user.id ||
       session.sharedWith?.includes(req.user.id);
 
-    if (!canAccess) return res.status(403).json({ error: "Access Denied" });
+    const isShared = session.sharedWith?.includes(req.user.id);
+
+    if (!canAccess && !isShared)
+      return res.status(403).json({ error: "Access Denied" });
 
     return res.status(200).json({ success: true, session });
   } catch (err) {
@@ -74,6 +77,17 @@ async function FetchSession(req, res) {
 async function EditSession(req, res) {
   try {
     const { code, language, title, fontSize } = req.body;
+
+    const session_find = await SessionService.Get_Session(req.params.roomId);
+
+    if (!session_find)
+      return res.status(400).json({ error: "Session not found " });
+
+    const isOwner = req.user.id === session_find.ownerId;
+    const isShared = session.sharedWith?.includes(req.user.id);
+
+    if (!isOwner && !isShared)
+      return res.status(400).json({ error: "Access Denied" });
 
     const $set = {};
     if (code !== undefined) $set.code = code;
@@ -89,8 +103,6 @@ async function EditSession(req, res) {
       req.user.id,
       $set,
     );
-
-    if (!session) return res.status(404).json({ error: "Session not found" });
 
     await RedisStore.invalidateCache(req.user.id);
 
