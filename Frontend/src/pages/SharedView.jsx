@@ -5,18 +5,7 @@ import api from "../api/index";
 import toast from "react-hot-toast";
 import Navbar from "../components/Navbar";
 import { useSocket } from "../socket/useSocket";
-
-// ── Language badge colours (same as SessionCard presumably) ──────────────────
-const LANG_COLORS = {
-  javascript: "bg-yellow-500/20 text-yellow-400",
-  typescript: "bg-blue-500/20 text-blue-400",
-  python: "bg-green-500/20 text-green-400",
-  rust: "bg-orange-500/20 text-orange-400",
-  go: "bg-cyan-500/20 text-cyan-400",
-  cpp: "bg-purple-500/20 text-purple-400",
-  java: "bg-red-500/20 text-red-400",
-  default: "bg-gray-500/20 text-gray-400",
-};
+import { LANG_COLORS } from "../components/SessionCard";
 
 const langColor = (lang) =>
   LANG_COLORS[lang?.toLowerCase()] ?? LANG_COLORS.default;

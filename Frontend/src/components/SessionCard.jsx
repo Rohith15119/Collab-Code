@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import api from "../api/index";
 import toast from "react-hot-toast";
 
-const LANG_COLORS = {
+export const LANG_COLORS = {
   javascript: "text-yellow-400 bg-yellow-400/10",
   typescript: "text-blue-400 bg-blue-400/10",
   python: "text-green-400 bg-green-400/10",
@@ -14,8 +14,6 @@ const LANG_COLORS = {
   default: "text-gray-400 bg-gray-400/10",
 };
 
-// ✅ FIX: Robust date formatter — returns null on missing/invalid input.
-// Renders a short, readable format e.g. "Mar 6, 2026, 4:32 PM"
 function formatDate(value) {
   if (!value) return null;
   const d = new Date(value);
@@ -45,9 +43,6 @@ function SessionCard({
   const [showShare, setShowShare] = useState(false);
   const langClass = LANG_COLORS[language] ?? LANG_COLORS.default;
 
-  // ✅ FIX: Prefer updatedAt (most recent activity); fall back to createdAt.
-  // Mongoose timestamps: true always populates both from the API, so one
-  // of these will always be a valid ISO string.
   const displayDate = formatDate(updatedAt) ?? formatDate(createdAt);
 
   return (
