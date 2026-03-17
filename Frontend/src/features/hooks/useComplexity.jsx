@@ -4,37 +4,40 @@ export default function Complexity({ codeRef, languageRef }) {
   const [complexity, setComplexity] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-  const analyzeComplexity = useCallback(async (lastAnalyzedRef, api) => {
-    const cached = lastAnalyzedRef.current;
-    if (
-      cached.code === codeRef.current &&
-      cached.language === languageRef.current &&
-      cached.result
-    ) {
+  const analyzeComplexity = useCallback(
+    async (lastAnalyzedRef, api) => {
+      const cached = lastAnalyzedRef.current;
+      if (
+        cached.code === codeRef.current &&
+        cached.language === languageRef.current &&
+        cached.result
+      ) {
+        setIsAnalyzing(true);
+        await new Promise((r) => setTimeout(r, 600));
+        setComplexity(cached.result);
+        setIsAnalyzing(false);
+        return;
+      }
       setIsAnalyzing(true);
-      await new Promise((r) => setTimeout(r, 600));
-      setComplexity(cached.result);
+      setComplexity(null);
+      try {
+        const { data } = await api.post("/analyze-complexity", {
+          code: codeRef.current,
+          language: languageRef.current,
+        });
+        setComplexity(data);
+        lastAnalyzedRef.current = {
+          code: codeRef.current,
+          language: languageRef.current,
+          result: data,
+        };
+      } catch {
+        setComplexity({ time: "?", space: "?", reason: "Analysis failed." });
+      }
       setIsAnalyzing(false);
-      return;
-    }
-    setIsAnalyzing(true);
-    setComplexity(null);
-    try {
-      const { data } = await api.post("/analyze-complexity", {
-        code: codeRef.current,
-        language: languageRef.current,
-      });
-      setComplexity(data);
-      lastAnalyzedRef.current = {
-        code: codeRef.current,
-        language: languageRef.current,
-        result: data,
-      };
-    } catch {
-      setComplexity({ time: "?", space: "?", reason: "Analysis failed." });
-    }
-    setIsAnalyzing(false);
-  }, []);
+    },
+    [codeRef, languageRef],
+  );
 
   return { analyzeComplexity, complexity, isAnalyzing, setComplexity };
 }
