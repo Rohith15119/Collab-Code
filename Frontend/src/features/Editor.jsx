@@ -223,8 +223,8 @@ export default function Editor() {
       <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 px-3 py-2 bg-gray-900 border-b border-gray-800">
         <div className="flex items-center gap-2 min-w-0">
           <button
-            onClick={async () => {
-              await saveSession();
+            onClick={() => {
+              saveSession();
               toast.success("Saved! ✅");
               navigate("/dashboard");
             }}
@@ -321,7 +321,7 @@ export default function Editor() {
           />
 
           <ActionButton
-            onClick={saveSession}
+            onClick={() => saveSession()}
             icon="💾"
             label={isSaving ? "Saving…" : "Save"}
             disabled={isSaving}
