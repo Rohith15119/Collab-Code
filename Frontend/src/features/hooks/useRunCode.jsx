@@ -106,7 +106,7 @@ export function useRunCode() {
       }
       setIsRunning(false);
     },
-    [userInput],
+    [],
   );
 
   return { handleRun, output, isRunning, setOutput };
