@@ -321,7 +321,10 @@ export default function Editor() {
           />
 
           <ActionButton
-            onClick={() => saveSession()}
+            onClick={() => {
+              saveSession();
+              toast.success("Saved! ✅");
+            }}
             icon="💾"
             label={isSaving ? "Saving…" : "Save"}
             disabled={isSaving}
