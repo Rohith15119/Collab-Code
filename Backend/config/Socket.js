@@ -32,6 +32,8 @@ async function initSocket(server) {
   io.on("connection", (socket) => {
     socket.join(`user:${socket.user.id}`);
 
+    console.log(socket.user.email);
+
     socket.on("join:session", (roomId) => {
       socket.join(roomId);
       socket.to(roomId).emit("presence:joined", {
@@ -47,7 +49,7 @@ async function initSocket(server) {
     });
 
     socket.on("code:change", ({ roomId, code, language }) => {
-      io.to(roomId).emit("code:change", {
+      socket.to(roomId).emit("code:change", {
         code,
         language,
         sender: socket.user.id,
