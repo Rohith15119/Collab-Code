@@ -11,6 +11,7 @@ export default function Operations({
   suppressEmitRef,
   api,
   getSocket,
+  myUserId,
 }) {
   const saveSession = useCallback(
     async (overrideCode) => {
@@ -47,6 +48,7 @@ export default function Operations({
       roomId,
       code: value,
       language: languageRef.current,
+      sender: myUserId,
     });
   };
 

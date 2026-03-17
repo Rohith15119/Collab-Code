@@ -88,6 +88,7 @@ export default function Editor() {
       suppressEmitRef,
       api,
       getSocket,
+      myUserId,
     });
 
   useEffect(() => {
