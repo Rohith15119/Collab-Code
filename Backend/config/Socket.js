@@ -47,32 +47,12 @@ async function initSocket(server) {
     });
 
     socket.on("code:change", ({ roomId, code, language }) => {
-      // FIXED: Broadcast to ALL clients in the room including the sender
       io.to(roomId).emit("code:change", {
         code,
         language,
         sender: socket.user.id,
         timestamp: Date.now(),
       });
-    });
-
-    const CHAR_DIFF_THRESHOLD = 10;
-
-    socket.on("session:reconcile", async ({ roomId, localCharCount }) => {
-      try {
-        const session = await Session.findOne({ roomId }); // your DB query
-        if (!session) return;
-        const canonicalLen = (session.code ?? "").length;
-        const diff = Math.abs(canonicalLen - localCharCount);
-        if (diff > CHAR_DIFF_THRESHOLD) {
-          socket.emit("session:reconcile:response", {
-            code: session.code,
-            language: session.language,
-          });
-        }
-      } catch (err) {
-        console.error("reconcile error", err);
-      }
     });
 
     socket.on("disconnect", () => {

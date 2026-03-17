@@ -135,32 +135,6 @@ const COMPLEXITY_COLOR = {
   "O(n!)": "text-pink-600",
 };
 
-// ── Concurrent sync strategy ──────────────────────────────────────────────────
-//
-// LAYER 1 — Character-diff guard (fires on every incoming code:change event)
-//   Computes |incoming.length - local.length|. If > CHAR_DIFF_THRESHOLD,
-//   a meaningful concurrent edit is present that isn't reflected locally.
-//   The incoming code is force-applied immediately and a brief toast shown.
-//   Small diffs (≤ threshold) are applied normally via suppressEmitRef.
-//
-// LAYER 2 — Periodic reconciliation ping (safety net, every 5 s)
-//   Emits "session:reconcile" with the local char count as a lightweight
-//   checksum. The server compares against the stored canonical code and,
-//   if they differ by more than the threshold, replies with
-//   "session:reconcile:response" containing the full canonical code.
-//   The client applies it only when the user is not actively typing,
-//   avoiding cursor-jump interruptions.
-//
-//   ⚠️  Requires a small server-side addition — see the comment block at
-//   the very bottom of this file for the exact Socket.IO handler to add.
-//
-// ─────────────────────────────────────────────────────────────────────────────
-
-// Minimum character-count difference to treat an incoming peer edit as a
-// meaningful concurrent modification and force-apply it.
-const CHAR_DIFF_THRESHOLD = 10;
-
-// ── Settings Drawer ───────────────────────────────────────────────────────────
 function SettingsDrawer({
   open,
   onClose,
@@ -350,7 +324,6 @@ function SettingsDrawer({
   );
 }
 
-// ── Shortcuts Modal ───────────────────────────────────────────────────────────
 function ShortcutsModal({ open, onClose }) {
   if (!open) return null;
 
@@ -358,7 +331,7 @@ function ShortcutsModal({ open, onClose }) {
     { keys: ["Ctrl", "S"], action: "Save session" },
     { keys: ["Ctrl", "Enter"], action: "Run code" },
     { keys: ["Ctrl", "D"], action: "Download file" },
-    { keys: ["Ctrl", "⇧", "C"], action: "Copy code" },
+    { keys: ["Ctrl", "C"], action: "Copy code" },
     { keys: ["Ctrl", "="], action: "Increase font size" },
     { keys: ["Ctrl", "-"], action: "Decrease font size" },
     { keys: ["Ctrl", "F"], action: "Find in editor" },
@@ -415,8 +388,8 @@ export default function Editor() {
   const { roomId } = useParams();
   const navigate = useNavigate();
 
-  // Safe JWT decode — crash-proof, redirects on bad token
   let myUserId = null;
+
   try {
     const token = localStorage.getItem("token");
     if (token) {
@@ -452,43 +425,23 @@ export default function Editor() {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [prefsLoaded, setPrefsLoaded] = useState(false);
 
-  // Always-current refs — prevent stale closure bugs
   const codeRef = useRef(null);
   const languageRef = useRef(null);
   const themeRef = useRef(theme);
   const suppressEmitRef = useRef(false);
-  const socketEmitTimer = useRef(null);
   const lastAnalyzedRef = useRef({ code: null, language: null, result: null });
+  const editorRef = useRef(null);
 
   useEffect(() => {
     codeRef.current = code;
-  }, [code]);
-  useEffect(() => {
     languageRef.current = language;
-  }, [language]);
-  useEffect(() => {
     themeRef.current = theme;
-  }, [theme]);
+  }, [code, language, theme]);
 
-  // ── NEW: local-typing tracker ─────────────────────────────────────────────
-  // Prevents the reconcile response from overwriting the editor while the
-  // user is actively typing (which would jump their cursor).
-  const isLocallyTypingRef = useRef(false);
-  const localTypingTimer = useRef(null);
-
-  const markLocalTyping = useCallback(() => {
-    isLocallyTypingRef.current = true;
-    clearTimeout(localTypingTimer.current);
-    // Treat the user as "idle" after 1.5 s without a keystroke
-    localTypingTimer.current = setTimeout(() => {
-      isLocallyTypingRef.current = false;
-    }, 1500);
-  }, []);
-
-  // ── Socket setup with Layer 1 + Layer 2 sync ──────────────────────────────
   useEffect(() => {
     const socket = getSocket();
     if (!socket.connected) socket.connect();
+
     socket.emit("join:session", roomId);
 
     const onCodeChange = ({
@@ -498,64 +451,22 @@ export default function Editor() {
     }) => {
       if (sender === myUserId) return;
 
-      const localLen = (codeRef.current ?? "").length;
-      const incomingLen = (incomingCode ?? "").length;
-      const charDiff = Math.abs(incomingLen - localLen);
-      const isMeaningfulDiff = charDiff > CHAR_DIFF_THRESHOLD;
+      const position = editorRef.current?.getPosition();
 
-      if (isMeaningfulDiff) {
-        setCode(incomingCode);
-        setLanguage(incomingLang);
-        toast("↕ Synced with peer edits", {
-          icon: "🔄",
-          duration: 100,
-          style: { fontSize: "18px" },
-        });
-      } else {
-        suppressEmitRef.current = true;
-        setCode(incomingCode);
-        setLanguage(incomingLang);
-      }
-    };
+      suppressEmitRef.current = true;
+      setCode(incomingCode);
+      setLanguage(incomingLang);
 
-    const reconcileInterval = setInterval(() => {
-      if (!languageRef.current) return; // session not loaded yet
-      socket.emit("session:reconcile", {
-        roomId,
-        localCharCount: (codeRef.current ?? "").length,
-      });
-    }, 100);
-
-    const onReconcileResponse = ({
-      code: canonicalCode,
-      language: canonicalLang,
-    }) => {
-      if (isLocallyTypingRef.current) return;
-
-      const localLen = (codeRef.current ?? "").length;
-      const canonicalLen = (canonicalCode ?? "").length;
-      const charDiff = Math.abs(canonicalLen - localLen);
-
-      if (charDiff > CHAR_DIFF_THRESHOLD) {
-        suppressEmitRef.current = true;
-        setCode(canonicalCode);
-        setLanguage(canonicalLang);
-        toast("↕ Auto-synced missed changes", {
-          icon: "🔄",
-          duration: 100,
-          style: { fontSize: "18px" },
-        });
-      }
+      setTimeout(() => {
+        if (position) editorRef.current?.setPosition(position);
+      }, 0);
     };
 
     socket.on("code:change", onCodeChange);
-    socket.on("session:reconcile:response", onReconcileResponse);
 
     return () => {
       socket.emit("leave:session", roomId);
       socket.off("code:change", onCodeChange);
-      socket.off("session:reconcile:response", onReconcileResponse);
-      clearInterval(reconcileInterval);
     };
   }, [roomId]);
 
@@ -676,9 +587,6 @@ export default function Editor() {
   );
 
   const handleCodeChange = (value) => {
-    // Track that the user is actively typing so Layer 2 doesn't interrupt
-    markLocalTyping();
-
     if (suppressEmitRef.current) {
       suppressEmitRef.current = false;
       setCode(value);
@@ -687,16 +595,13 @@ export default function Editor() {
 
     setCode(value);
 
-    // Guard against emitting before session load (language === null)
-    clearTimeout(socketEmitTimer.current);
-    socketEmitTimer.current = setTimeout(() => {
-      if (!languageRef.current) return;
-      getSocket().emit("code:change", {
-        roomId,
-        code: value,
-        language: languageRef.current,
-      });
-    }, 150);
+    if (!languageRef.current) return;
+
+    getSocket().emit("code:change", {
+      roomId,
+      code: value,
+      language: languageRef.current,
+    });
   };
 
   const handleCopy = useCallback(() => {
@@ -1153,9 +1058,10 @@ export default function Editor() {
                 language={language}
                 value={code}
                 onChange={handleCodeChange}
-                onMount={(_editor, monacoInstance) =>
-                  loadTheme(monacoInstance, themeRef.current)
-                }
+                onMount={(editor, monacoInstance) => {
+                  loadTheme(monacoInstance, themeRef.current);
+                  editorRef.current = editor;
+                }}
                 options={{
                   fontSize,
                   tabSize,
