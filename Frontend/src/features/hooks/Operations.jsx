@@ -49,6 +49,7 @@ export default function Operations({
   };
 
   const handleCopy = useCallback(() => {
+    if (!codeRef.current) return;
     navigator.clipboard.writeText(codeRef.current);
     toast.success("Copied! 📋");
   }, []);
@@ -77,6 +78,8 @@ export default function Operations({
       sql: "sql",
       bash: "sh",
     };
+
+    if (!codeRef.current) return;
 
     const blob = new Blob([codeRef.current], { type: "text/plain" });
     const url = URL.createObjectURL(blob);

@@ -6,6 +6,10 @@ export default function Complexity({ codeRef, languageRef }) {
 
   const analyzeComplexity = useCallback(
     async (lastAnalyzedRef, api) => {
+      if (!codeRef?.current || !languageRef?.current) {
+        return;
+      }
+
       const cached = lastAnalyzedRef.current;
       if (
         cached.code === codeRef.current &&
