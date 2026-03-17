@@ -8,7 +8,7 @@ export function getSocket() {
   if (!socket) {
     socket = io(BACKEND_URL, {
       auth: { token: localStorage.getItem("token") },
-      autoConnect: false,
+      autoConnect: true,
       transports: ["websocket"],
     });
   }
