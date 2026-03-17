@@ -34,10 +34,12 @@ export default function Operations({
     if (suppressEmitRef.current) {
       suppressEmitRef.current = false;
       setCode(value);
+      codeRef.current = value;
       return;
     }
 
     setCode(value);
+    codeRef.current = value;
 
     if (!languageRef.current) return;
 

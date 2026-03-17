@@ -136,7 +136,17 @@ export default function Editor() {
     setPrefsLoaded,
   });
 
-  EditorSocket({ editorRef, suppressEmitRef, roomId, myUserId, getSocket });
+  EditorSocket({
+    editorRef,
+    suppressEmitRef,
+    roomId,
+    myUserId,
+    getSocket,
+    setCode,
+    setLanguage,
+    codeRef,
+    languageRef,
+  });
 
   Sessions({
     roomId,

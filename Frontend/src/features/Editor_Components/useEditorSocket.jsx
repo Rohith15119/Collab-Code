@@ -6,6 +6,10 @@ export default function EditorSocket({
   roomId,
   myUserId,
   getSocket,
+  setCode,
+  setLanguage,
+  codeRef,
+  languageRef,
 }) {
   useEffect(() => {
     const socket = getSocket();
@@ -23,12 +27,12 @@ export default function EditorSocket({
       const position = editorRef.current?.getPosition();
 
       suppressEmitRef.current = true;
+
+      codeRef.current = incomingCode;
+      languageRef.current = incomingLang;
+
       setCode(incomingCode);
       setLanguage(incomingLang);
-
-      if (editorRef.current) {
-        editorRef.current.setValue(incomingCode);
-      }
 
       setTimeout(() => {
         if (position) editorRef.current?.setPosition(position);
@@ -41,5 +45,5 @@ export default function EditorSocket({
       socket.emit("leave:session", roomId);
       socket.off("code:change", onCodeChange);
     };
-  }, [roomId]);
+  }, [roomId, myUserId, getSocket]);
 }
