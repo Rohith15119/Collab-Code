@@ -74,7 +74,7 @@ export default function Editor() {
 
   const { handleRun, output, isRunning, setOutput } = useRunCode();
   const { analyzeComplexity, isAnalyzing, complexity, setComplexity } =
-    Complexity();
+    Complexity({ codeRef, languageRef });
 
   const { saveSession, handleCodeChange, handleCopy, handleDownload } =
     Operations({

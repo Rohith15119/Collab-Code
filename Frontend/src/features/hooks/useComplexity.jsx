@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 
-export default function Complexity() {
+export default function Complexity({ codeRef, languageRef }) {
   const [complexity, setComplexity] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
