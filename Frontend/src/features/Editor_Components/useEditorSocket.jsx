@@ -20,26 +20,19 @@ export default function EditorSocket({
     const onCodeChange = ({
       code: incomingCode,
       language: incomingLang,
-      changes,
       sender,
     }) => {
       if (sender === myUserId) return;
 
-      const editor = editorRef.current;
-
-      if (!editor) return;
-
       const position = editorRef.current?.getPosition();
+
       suppressEmitRef.current = true;
 
-      editor.executeEdits(
-        "remote",
-        changes.map((c) => ({
-          range: c.range,
-          text: c.text,
-          forceMoveMarkers: true,
-        })),
-      );
+      codeRef.current = incomingCode;
+      languageRef.current = incomingLang;
+
+      setCode(incomingCode);
+      setLanguage(incomingLang);
 
       setTimeout(() => {
         if (position) editorRef.current?.setPosition(position);
