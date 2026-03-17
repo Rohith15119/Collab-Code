@@ -1,6 +1,6 @@
 import { io } from "socket.io-client";
 
-const BACKEND_URL = import.meta.env.BACKEND_URI;
+const BACKEND_URL = "https://collab-code-backend-hxmi.onrender.com";
 
 let socket = null;
 
@@ -8,7 +8,7 @@ export function getSocket() {
   if (!socket) {
     socket = io(BACKEND_URL, {
       auth: { token: localStorage.getItem("token") },
-      autoConnect: true,
+      autoConnect: false,
       transports: ["websocket"],
     });
   }

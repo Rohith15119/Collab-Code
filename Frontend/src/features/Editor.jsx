@@ -137,7 +137,15 @@ export default function Editor() {
 
   EditorSocket({ editorRef, suppressEmitRef, roomId, myUserId, getSocket });
 
-  Sessions({ roomId, setLanguage, setTitle, setCode, navigate, api });
+  Sessions({
+    roomId,
+    setLanguage,
+    setTitle,
+    setCode,
+    navigate,
+    api,
+    setIsLoadingSession,
+  });
 
   useEffect(() => {
     const handleKeyDown = (e) => {
