@@ -1,4 +1,5 @@
 const { Server } = require("socket.io");
+const Session = require("../models/Session");
 const jwt = require("jsonwebtoken");
 
 let io;
@@ -12,7 +13,6 @@ async function initSocket(server) {
   });
 
   io.use((socket, next) => {
-    //MIDDLEWARE
     const token = socket.handshake.auth?.token;
 
     if (!token) {
@@ -30,8 +30,7 @@ async function initSocket(server) {
   });
 
   io.on("connection", (socket) => {
-    // socket.user is now available here, same shape as req.user in your routes
-    socket.join(`user:${socket.user.id}`); // personal notification room
+    socket.join(`user:${socket.user.id}`);
 
     socket.on("join:session", (roomId) => {
       socket.join(roomId);

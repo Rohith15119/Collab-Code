@@ -17,6 +17,7 @@ const LANG_COLORS = {
   java: "bg-red-500/20 text-red-400",
   default: "bg-gray-500/20 text-gray-400",
 };
+
 const langColor = (lang) =>
   LANG_COLORS[lang?.toLowerCase()] ?? LANG_COLORS.default;
 
@@ -46,10 +47,7 @@ export default function SharedView() {
     setReceived((prev) => prev.filter((s) => s.roomId !== roomId));
   }, []);
 
-  const onCollaboratorAdded = useCallback(({ id, email, name }) => {
-    // UI already updated optimistically in onShared callback — no action needed
-    // but you could add a toast if you want
-  }, []);
+  const onCollaboratorAdded = useCallback(({ id, email, name }) => {}, []);
 
   const onCollaboratorRemoved = useCallback(({ userId, email }) => {
     setSent((prev) =>

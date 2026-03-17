@@ -491,10 +491,6 @@ export default function Editor() {
     if (!socket.connected) socket.connect();
     socket.emit("join:session", roomId);
 
-    // ── LAYER 1: Character-diff guard ────────────────────────────────────────
-    // Every incoming peer event computes |incomingLen - localLen|.
-    // If > CHAR_DIFF_THRESHOLD → meaningful concurrent edit → force-apply.
-    // If ≤ threshold → small routine edit → apply via suppressEmitRef.
     const onCodeChange = ({
       code: incomingCode,
       language: incomingLang,
@@ -508,54 +504,46 @@ export default function Editor() {
       const isMeaningfulDiff = charDiff > CHAR_DIFF_THRESHOLD;
 
       if (isMeaningfulDiff) {
-        // Force-apply — peer has substantially different content
         setCode(incomingCode);
         setLanguage(incomingLang);
         toast("↕ Synced with peer edits", {
           icon: "🔄",
-          duration: 1800,
-          style: { fontSize: "12px" },
+          duration: 100,
+          style: { fontSize: "18px" },
         });
       } else {
-        // Normal small peer update
         suppressEmitRef.current = true;
         setCode(incomingCode);
         setLanguage(incomingLang);
       }
     };
 
-    // ── LAYER 2: Periodic reconciliation ping ─────────────────────────────
-    // Every 5 s, send our local char count to the server as a checksum.
-    // The server replies (to this socket only) if canonical code differs
-    // by more than CHAR_DIFF_THRESHOLD — catching any dropped events.
     const reconcileInterval = setInterval(() => {
       if (!languageRef.current) return; // session not loaded yet
       socket.emit("session:reconcile", {
         roomId,
         localCharCount: (codeRef.current ?? "").length,
       });
-    }, 5000);
+    }, 100);
 
     const onReconcileResponse = ({
       code: canonicalCode,
       language: canonicalLang,
     }) => {
-      // Skip if user is mid-keystroke — avoids cursor-jump interruptions
       if (isLocallyTypingRef.current) return;
 
       const localLen = (codeRef.current ?? "").length;
       const canonicalLen = (canonicalCode ?? "").length;
       const charDiff = Math.abs(canonicalLen - localLen);
 
-      // Re-check diff (state may have updated since we sent the ping)
       if (charDiff > CHAR_DIFF_THRESHOLD) {
         suppressEmitRef.current = true;
         setCode(canonicalCode);
         setLanguage(canonicalLang);
         toast("↕ Auto-synced missed changes", {
           icon: "🔄",
-          duration: 1800,
-          style: { fontSize: "12px" },
+          duration: 100,
+          style: { fontSize: "18px" },
         });
       }
     };

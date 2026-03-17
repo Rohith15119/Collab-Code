@@ -8,7 +8,7 @@ export function getSocket() {
   if (!socket) {
     socket = io(BACKEND_URL, {
       auth: { token: localStorage.getItem("token") },
-      autoConnect: false, // ✅ we control when it connects
+      autoConnect: true,
     });
   }
   return socket;
@@ -17,6 +17,6 @@ export function getSocket() {
 export function disconnectSocket() {
   if (socket) {
     socket.disconnect();
-    socket = null; // ✅ fully reset so next getSocket() re-creates with fresh token
+    socket = null;
   }
 }

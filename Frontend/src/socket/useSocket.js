@@ -20,13 +20,11 @@ export function useSocket(events = {}) {
     });
 
     return () => {
-      // Cleanup only the listeners, don't disconnect
-      // (socket stays alive across pages for global notifications)
       Object.entries(handlers).forEach(([event, handler]) => {
         socket.off(event, handler);
       });
     };
-  }, []); // ✅ runs once — handlers are stable refs via useCallback in caller
+  }, []);
 
   return socketRef.current ?? getSocket();
 }
