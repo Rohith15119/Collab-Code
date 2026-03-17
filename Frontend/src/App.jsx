@@ -5,7 +5,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
-import Editor from "./pages/Editor";
+import Editor from "./features/Editor";
 import Profile from "./pages/Profile";
 import SharedView from "./pages/SharedView";
 import Settings from "./pages/Settings";
