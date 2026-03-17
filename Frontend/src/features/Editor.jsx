@@ -85,6 +85,8 @@ export default function Editor() {
       title,
       setCode,
       suppressEmitRef,
+      api,
+      getSocket,
     });
 
   useEffect(() => {
@@ -94,7 +96,7 @@ export default function Editor() {
   }, [code, language, theme]);
 
   useEffect(() => {
-    if (monaco) loadTheme(monaco, theme);
+    if (monaco) loadTheme(monaco, theme, themeCache);
   }, [theme, monaco]);
 
   useEffect(() => {
@@ -133,9 +135,9 @@ export default function Editor() {
     setPrefsLoaded,
   });
 
-  EditorSocket({ editorRef, suppressEmitRef, roomId, myUserId });
+  EditorSocket({ editorRef, suppressEmitRef, roomId, myUserId, getSocket });
 
-  Sessions({ roomId, setLanguage, setTitle, setCode, navigate });
+  Sessions({ roomId, setLanguage, setTitle, setCode, navigate, api });
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -315,7 +317,7 @@ export default function Editor() {
           </button>
 
           <button
-            onClick={() => analyzeComplexity(lastAnalyzedRef)}
+            onClick={() => analyzeComplexity(lastAnalyzedRef, api)}
             disabled={isAnalyzing}
             className="bg-purple-700 hover:bg-purple-600 disabled:opacity-50 text-xs px-3 py-1.5 rounded-xl font-medium transition hidden sm:flex items-center gap-1"
           >
@@ -325,7 +327,7 @@ export default function Editor() {
             </span>
           </button>
           <button
-            onClick={() => analyzeComplexity(lastAnalyzedRef)}
+            onClick={() => analyzeComplexity(lastAnalyzedRef, api)}
             disabled={isAnalyzing}
             className="bg-purple-700 hover:bg-purple-600 disabled:opacity-50 text-sm w-8 h-8 rounded-xl flex items-center justify-center sm:hidden"
           >
@@ -463,7 +465,7 @@ export default function Editor() {
                 value={code}
                 onChange={handleCodeChange}
                 onMount={(editor, monacoInstance) => {
-                  loadTheme(monacoInstance, themeRef.current);
+                  loadTheme(monacoInstance, themeRef.current, themeCache);
                   editorRef.current = editor;
                 }}
                 options={{

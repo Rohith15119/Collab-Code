@@ -1,7 +1,5 @@
 import { useCallback } from "react";
 import toast from "react-hot-toast";
-import { getSocket } from "../socket/index";
-import api from "../api/index";
 
 export default function Operations({
   roomId,
@@ -11,6 +9,8 @@ export default function Operations({
   title,
   setCode,
   suppressEmitRef,
+  api,
+  getSocket,
 }) {
   const saveSession = useCallback(
     async (overrideCode) => {

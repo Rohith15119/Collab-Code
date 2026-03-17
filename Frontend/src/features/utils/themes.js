@@ -1,4 +1,6 @@
-export const loadTheme = async (monacoInstance, themeName) => {
+import { THEME_FILE_MAP } from "../utils/constants";
+
+export const loadTheme = async (monacoInstance, themeName, themeCache) => {
   if (["vs-dark", "light", "hc-black"].includes(themeName)) {
     monacoInstance.editor.setTheme(themeName);
     return;

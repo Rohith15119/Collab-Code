@@ -1,11 +1,10 @@
 import { useCallback } from "react";
-import api from "../api/index";
 
 export default function Complexity() {
   const [complexity, setComplexity] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-  const analyzeComplexity = useCallback(async (lastAnalyzedRef) => {
+  const analyzeComplexity = useCallback(async (lastAnalyzedRef, api) => {
     const cached = lastAnalyzedRef.current;
     if (
       cached.code === codeRef.current &&

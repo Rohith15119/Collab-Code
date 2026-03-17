@@ -1,5 +1,4 @@
-import { use } from "react";
-import api from "../api/index";
+import { useEffect } from "react";
 import toast from "react-hot-toast";
 
 export default function Sessions({
@@ -8,6 +7,7 @@ export default function Sessions({
   setTitle,
   setCode,
   navigate,
+  api,
 }) {
   useEffect(() => {
     const controller = new AbortController();

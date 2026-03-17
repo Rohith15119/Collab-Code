@@ -1,10 +1,11 @@
-import { getSocket } from "../socket/index";
+import { useEffect } from "react";
 
 export default function EditorSocket({
   editorRef,
   suppressEmitRef,
   roomId,
   myUserId,
+  getSocket,
 }) {
   useEffect(() => {
     const socket = getSocket();
