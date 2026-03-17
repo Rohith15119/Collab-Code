@@ -22,6 +22,7 @@ import {
   THEME_FILE_MAP,
   COMPLEXITY_COLOR,
 } from "../features/utils/constants";
+import ActionButton from "./hooks/ActionButton";
 
 export const themeCache = {};
 
@@ -74,7 +75,7 @@ export default function Editor() {
 
   const { handleRun, output, isRunning, setOutput } = useRunCode();
   const { analyzeComplexity, isAnalyzing, complexity, setComplexity } =
-    Complexity({ codeRef, languageRef });
+    Complexity(codeRef, languageRef);
 
   const { saveSession, handleCodeChange, handleCopy, handleDownload } =
     Operations({
@@ -298,104 +299,44 @@ export default function Editor() {
         </div>
 
         <div className="flex items-center gap-1.5 flex-wrap">
-          <button
-            onClick={handleCopy}
-            className="bg-gray-800 border border-gray-700 hover:bg-gray-700 hover:border-green-500 text-xs px-3 py-1.5 rounded-xl font-medium transition-all hidden sm:flex items-center gap-1"
-          >
-            📋 <span className="hidden md:inline">Copy</span>
-          </button>
-          <button
-            onClick={handleCopy}
-            className="bg-gray-800 border border-gray-700 hover:bg-gray-700 text-sm w-8 h-8 rounded-xl flex items-center justify-center sm:hidden"
-          >
-            📋
-          </button>
-
-          <button
-            onClick={handleDownload}
-            className="bg-gray-800 border border-gray-700 hover:bg-gray-700 hover:border-green-500 text-xs px-3 py-1.5 rounded-xl font-medium transition-all hidden sm:flex items-center gap-1"
-          >
-            ⬇️ <span className="hidden md:inline">Download</span>
-          </button>
-          <button
-            onClick={handleDownload}
-            className="bg-gray-800 border border-gray-700 hover:bg-gray-700 text-sm w-8 h-8 rounded-xl flex items-center justify-center sm:hidden"
-          >
-            ⬇️
-          </button>
-
-          <button
+          <ActionButton onClick={handleCopy} icon="📋" label="Copy" />
+          <ActionButton onClick={handleDownload} icon="⬇️" label="Download" />
+          <ActionButton
             onClick={() => analyzeComplexity(lastAnalyzedRef, api)}
+            icon="📊"
+            label={isAnalyzing ? "Analyzing…" : "Complexity"}
             disabled={isAnalyzing}
-            className="bg-purple-700 hover:bg-purple-600 disabled:opacity-50 text-xs px-3 py-1.5 rounded-xl font-medium transition hidden sm:flex items-center gap-1"
-          >
-            📊{" "}
-            <span className="hidden lg:inline">
-              {isAnalyzing ? "Analyzing…" : "Complexity"}
-            </span>
-          </button>
-          <button
-            onClick={() => analyzeComplexity(lastAnalyzedRef, api)}
-            disabled={isAnalyzing}
-            className="bg-purple-700 hover:bg-purple-600 disabled:opacity-50 text-sm w-8 h-8 rounded-xl flex items-center justify-center sm:hidden"
-          >
-            📊
-          </button>
-
-          <button
+            color="purple"
+          />
+          <ActionButton
             onClick={() => setShowShortcuts(true)}
-            title="Keyboard shortcuts"
-            className="bg-gray-800 border border-gray-700 hover:bg-gray-700 hover:border-green-500 text-xs px-3 py-1.5 rounded-xl font-medium transition-all hidden sm:flex items-center gap-1"
-          >
-            ⌨️ <span className="hidden lg:inline">Shortcuts</span>
-          </button>
-          <button
-            onClick={() => setShowShortcuts(true)}
-            className="bg-gray-800 border border-gray-700 hover:bg-gray-700 text-sm w-8 h-8 rounded-xl flex items-center justify-center sm:hidden"
-          >
-            ⌨️
-          </button>
+            label="Keyboard shortcuts"
+            icon="⌨️"
+          />
 
-          <button
+          <ActionButton
             onClick={() => setShowSettings(true)}
-            title="Editor settings"
-            className="bg-gray-800 border border-gray-700 hover:bg-gray-700 hover:border-green-500 text-xs px-3 py-1.5 rounded-xl font-medium transition-all hidden sm:flex items-center gap-1"
-          >
-            ⚙️ <span className="hidden lg:inline">Settings</span>
-          </button>
-          <button
-            onClick={() => setShowSettings(true)}
-            className="bg-gray-800 border border-gray-700 hover:bg-gray-700 text-sm w-8 h-8 rounded-xl flex items-center justify-center sm:hidden"
-          >
-            ⚙️
-          </button>
+            icon="⚙️"
+            label="Settings"
+          />
 
-          <button
-            onClick={async () => {
-              await saveSession();
-              toast.success("Saved! ✅");
-            }}
+          <ActionButton
+            onClick={saveSession}
+            icon="💾"
+            label={isSaving ? "Saving…" : "Save"}
             disabled={isSaving}
-            className="bg-blue-700 hover:bg-blue-600 disabled:opacity-50 text-xs px-3 py-1.5 rounded-xl font-medium transition flex items-center gap-1"
-          >
-            💾{" "}
-            <span className="hidden sm:inline">
-              {isSaving ? "Saving…" : "Save"}
-            </span>
-          </button>
+            color="blue"
+          />
 
-          <button
+          <ActionButton
             onClick={() =>
               handleRun({ codeRef, languageRef, userInput, setMobilePanel })
             }
+            icon={isRunning ? "⏳" : "▶"}
+            label={isRunning ? "Running…" : "Run"}
             disabled={isRunning}
-            className="bg-green-700 hover:bg-green-600 disabled:opacity-50 text-xs px-3 py-1.5 rounded-xl font-medium transition flex items-center gap-1"
-          >
-            {isRunning ? "⏳" : "▶"}{" "}
-            <span className="hidden sm:inline">
-              {isRunning ? "Running…" : "Run"}
-            </span>
-          </button>
+            color="green"
+          />
         </div>
       </div>
 
