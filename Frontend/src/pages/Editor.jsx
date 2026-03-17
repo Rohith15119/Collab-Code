@@ -449,6 +449,7 @@ export default function Editor() {
       language: incomingLang,
       sender,
     }) => {
+      console.log("RECEIVED SOCKET : ", code);
       if (sender === myUserId) return;
 
       const position = editorRef.current?.getPosition();
@@ -456,6 +457,10 @@ export default function Editor() {
       suppressEmitRef.current = true;
       setCode(incomingCode);
       setLanguage(incomingLang);
+
+      if (editorRef.current) {
+        editorRef.current.setValue(code);
+      }
 
       setTimeout(() => {
         if (position) editorRef.current?.setPosition(position);
