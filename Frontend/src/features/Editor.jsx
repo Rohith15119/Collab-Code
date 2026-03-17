@@ -425,10 +425,31 @@ export default function Editor() {
               <MonacoEditor
                 height="100%"
                 language={language}
-                value={code}
-                onChange={handleCodeChange}
+                defaultValue={code}
                 onMount={(editor, monacoInstance) => {
+                  editorRef.current = editor;
                   loadTheme(monacoInstance, themeRef.current, themeCache);
+
+                  editor.onDidChangeModelContent((event) => {
+                    if (suppressEmitRef.current) {
+                      suppressEmitRef.current = false;
+                      return;
+                    }
+
+                    const value = editor.getValue();
+                    codeRef.current = value;
+                    setCode(value);
+
+                    const changes = event.changes;
+
+                    getSocket().emit("code:change", {
+                      roomId,
+                      changes,
+                      language: languageRef.current,
+                      sender: myUserId,
+                    });
+                  });
+
                   editorRef.current = editor;
                 }}
                 options={{
