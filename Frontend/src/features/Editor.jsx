@@ -387,36 +387,67 @@ export default function Editor() {
       )}
 
       {/* ── MAIN CONTENT ── */}
+      {/* ── MAIN CONTENT ── */}
       <div className="flex-1 min-h-0 overflow-hidden">
-        {isLoadingSession ? (
-          <div className="flex items-center justify-center h-full text-gray-500 text-sm">
-            Loading session…
-          </div>
-        ) : (
+        {/* 📱 MOBILE VIEW */}
+        <div className="md:hidden h-full">
+          {mobilePanel === "editor" && (
+            <MonacoEditor
+              height="100%"
+              language={language}
+              value={code}
+              onChange={handleCodeChange}
+              onMount={(editor, monacoInstance) => {
+                loadTheme(monacoInstance, themeRef.current, themeCache);
+                editorRef.current = editor;
+              }}
+              options={{
+                fontSize,
+                tabSize,
+                minimap: { enabled: minimap },
+                wordWrap: wordWrap ? "on" : "off",
+                fontFamily,
+                fontLigatures: ligatures,
+              }}
+            />
+          )}
+
+          {mobilePanel === "input" && (
+            <InputPanel userInput={userInput} setUserInput={setUserInput} />
+          )}
+
+          {mobilePanel === "output" &&
+            (output ? (
+              <OutputPanel output={output} setOutput={setOutput} />
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-500">
+                Run code to see output 🚀
+              </div>
+            ))}
+        </div>
+
+        {/* 💻 DESKTOP VIEW */}
+        <div className="hidden md:flex h-full">
           <ResizablePanels
             left={
-              <div className="w-full h-full">
-                <MonacoEditor
-                  height="100%"
-                  language={language}
-                  value={code}
-                  onChange={handleCodeChange}
-                  onMount={(editor, monacoInstance) => {
-                    loadTheme(monacoInstance, themeRef.current, themeCache);
-                    editorRef.current = editor;
-                  }}
-                  options={{
-                    fontSize,
-                    tabSize,
-                    minimap: { enabled: minimap },
-                    scrollBeyondLastLine: false,
-                    automaticLayout: true,
-                    wordWrap: wordWrap ? "on" : "off",
-                    fontFamily,
-                    fontLigatures: ligatures,
-                  }}
-                />
-              </div>
+              <MonacoEditor
+                height="100%"
+                language={language}
+                value={code}
+                onChange={handleCodeChange}
+                onMount={(editor, monacoInstance) => {
+                  loadTheme(monacoInstance, themeRef.current, themeCache);
+                  editorRef.current = editor;
+                }}
+                options={{
+                  fontSize,
+                  tabSize,
+                  minimap: { enabled: minimap },
+                  wordWrap: wordWrap ? "on" : "off",
+                  fontFamily,
+                  fontLigatures: ligatures,
+                }}
+              />
             }
             middle={
               <InputPanel userInput={userInput} setUserInput={setUserInput} />
@@ -431,7 +462,7 @@ export default function Editor() {
               )
             }
           />
-        )}
+        </div>
       </div>
 
       <SettingsDrawer
