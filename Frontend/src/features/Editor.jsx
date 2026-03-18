@@ -13,6 +13,9 @@ import EditorPref from "./Editor_Components/useEditorPrefs";
 import EditorSocket from "./Editor_Components/useEditorSocket";
 import Sessions from "./hooks/Sessions";
 import Operations from "./hooks/Operations";
+import InputPanel from "./Editor_Components/InputPanel";
+import OutputPanel from "./Editor_Components/OutputPanel";
+import ResizablePanels from "./Editor_Components/ResizablePanels";
 
 import {
   LANGUAGES,
@@ -383,127 +386,51 @@ export default function Editor() {
         </div>
       )}
 
-      {/* ── MOBILE PANEL TABS ── */}
-      {output && (
-        <div className="shrink-0 flex border-b border-gray-800 bg-gray-900 md:hidden">
-          {["editor", "input", "output"].map((panel) => (
-            <button
-              key={panel}
-              onClick={() => setMobilePanel(panel)}
-              className={`flex-1 py-2 text-xs font-medium capitalize transition-all border-b-2 ${
-                mobilePanel === panel
-                  ? "border-green-500 text-green-400"
-                  : "border-transparent text-gray-500 hover:text-gray-300"
-              }`}
-            >
-              {panel === "editor"
-                ? "📝 Editor"
-                : panel === "input"
-                  ? "📥 Input"
-                  : "📤 Output"}
-            </button>
-          ))}
-        </div>
-      )}
-
       {/* ── MAIN CONTENT ── */}
-      <div className="flex flex-1 min-h-0 overflow-hidden">
-        <div
-          className={`
-            min-h-0 min-w-0 overflow-hidden
-            ${output ? "hidden md:flex md:flex-1" : "flex flex-1"}
-            ${output ? "md:w-1/2 lg:w-[55%]" : ""}
-            ${output && mobilePanel === "editor" ? "flex! flex-1 md:flex" : ""}
-          `}
-        >
-          <div className="w-full h-full">
-            {isLoadingSession ? (
-              <div className="flex items-center justify-center h-full text-gray-500 text-sm">
-                Loading session…
-              </div>
-            ) : (
-              <MonacoEditor
-                height="100%"
-                language={language}
-                value={code}
-                onChange={handleCodeChange}
-                onMount={(editor, monacoInstance) => {
-                  loadTheme(monacoInstance, themeRef.current, themeCache);
-                  editorRef.current = editor;
-                }}
-                options={{
-                  fontSize,
-                  tabSize,
-                  minimap: { enabled: minimap },
-                  scrollBeyondLastLine: false,
-                  automaticLayout: true,
-                  wordWrap: wordWrap ? "on" : "off",
-                  fontFamily,
-                  fontLigatures: ligatures,
-                }}
-              />
-            )}
+      <div className="flex-1 min-h-0 overflow-hidden">
+        {isLoadingSession ? (
+          <div className="flex items-center justify-center h-full text-gray-500 text-sm">
+            Loading session…
           </div>
-        </div>
-
-        {output && (
-          <>
-            <div
-              className={`
-                border-gray-800 bg-gray-950 flex flex-col flex-1 min-h-0 min-w-0
-                md:flex md:w-[22%] lg:w-[20%] md:flex-none md:border-l
-                ${mobilePanel === "input" ? "flex" : "hidden md:flex"}
-              `}
-            >
-              <div className="shrink-0 px-4 py-2.5 bg-gray-900 border-b border-gray-800 text-xs font-semibold text-gray-300 tracking-wide">
-                📥 Custom Input
-              </div>
-              <textarea
-                value={userInput}
-                onChange={(e) => setUserInput(e.target.value)}
-                placeholder="Enter input here..."
-                className="flex-1 bg-gray-950 text-gray-200 p-4 text-sm font-mono outline-none resize-none min-h-0"
-              />
-            </div>
-
-            <div
-              className={`
-                border-gray-800 bg-gray-950 flex flex-col flex-1 min-h-0 min-w-0
-                md:flex md:w-[28%] lg:w-[25%] md:flex-none md:border-l
-                ${mobilePanel === "output" ? "flex" : "hidden md:flex"}
-              `}
-            >
-              <div className="shrink-0 flex justify-between items-center px-4 py-2.5 bg-gray-900 border-b border-gray-800 text-xs font-semibold">
-                <span
-                  className={
-                    output.status === "error"
-                      ? "text-red-400"
-                      : output.status === "running"
-                        ? "text-yellow-400"
-                        : "text-green-400"
-                  }
-                >
-                  {output.status === "error"
-                    ? "❌ Error"
-                    : output.status === "running"
-                      ? "⏳ Running..."
-                      : "✅ Output"}
-                </span>
-                <button
-                  onClick={() => {
-                    setOutput(null);
-                    setMobilePanel("output");
+        ) : (
+          <ResizablePanels
+            left={
+              <div className="w-full h-full">
+                <MonacoEditor
+                  height="100%"
+                  language={language}
+                  value={code}
+                  onChange={handleCodeChange}
+                  onMount={(editor, monacoInstance) => {
+                    loadTheme(monacoInstance, themeRef.current, themeCache);
+                    editorRef.current = editor;
                   }}
-                  className="text-gray-400 hover:text-white text-base leading-none"
-                >
-                  ✕
-                </button>
+                  options={{
+                    fontSize,
+                    tabSize,
+                    minimap: { enabled: minimap },
+                    scrollBeyondLastLine: false,
+                    automaticLayout: true,
+                    wordWrap: wordWrap ? "on" : "off",
+                    fontFamily,
+                    fontLigatures: ligatures,
+                  }}
+                />
               </div>
-              <pre className="flex-1 overflow-auto p-4 text-xs sm:text-sm text-gray-200 font-mono leading-relaxed whitespace-pre-wrap wrap-break-word">
-                {output.text}
-              </pre>
-            </div>
-          </>
+            }
+            middle={
+              <InputPanel userInput={userInput} setUserInput={setUserInput} />
+            }
+            right={
+              output ? (
+                <OutputPanel output={output} setOutput={setOutput} />
+              ) : (
+                <div className="flex items-center justify-center h-full text-gray-500">
+                  Run code to see output 🚀
+                </div>
+              )
+            }
+          />
         )}
       </div>
 
