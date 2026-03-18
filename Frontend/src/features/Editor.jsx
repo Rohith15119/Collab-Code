@@ -35,7 +35,6 @@ export default function Editor() {
   const navigate = useNavigate();
 
   let myUserId = null;
-
   try {
     const token = localStorage.getItem("token");
     if (token) {
@@ -47,7 +46,7 @@ export default function Editor() {
     navigate("/login");
   }
 
-  //UseState hooks
+  // ── State ──────────────────────────────────────────────────────────────────
   const [code, setCode] = useState(null);
   const [language, setLanguage] = useState(null);
   const [isLoadingSession, setIsLoadingSession] = useState(true);
@@ -67,8 +66,10 @@ export default function Editor() {
   const [showSettings, setShowSettings] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [prefsLoaded, setPrefsLoaded] = useState(false);
+  // Controls whether the mobile bottom panel is expanded (for small phones)
+  const [bottomExpanded, setBottomExpanded] = useState(false);
 
-  //Ref's
+  // ── Refs ───────────────────────────────────────────────────────────────────
   const codeRef = useRef(null);
   const languageRef = useRef(null);
   const themeRef = useRef(theme);
@@ -76,6 +77,7 @@ export default function Editor() {
   const lastAnalyzedRef = useRef({ code: null, language: null, result: null });
   const editorRef = useRef(null);
 
+  // ── Hooks ──────────────────────────────────────────────────────────────────
   const { handleRun, output, isRunning, setOutput } = useRunCode();
   const { analyzeComplexity, isAnalyzing, complexity, setComplexity } =
     Complexity({ codeRef, languageRef });
@@ -94,6 +96,7 @@ export default function Editor() {
       myUserId,
     });
 
+  // ── Sync refs ──────────────────────────────────────────────────────────────
   useEffect(() => {
     codeRef.current = code;
     languageRef.current = language;
@@ -139,7 +142,6 @@ export default function Editor() {
     setFontFamily,
     setPrefsLoaded,
   });
-
   EditorSocket({
     editorRef,
     suppressEmitRef,
@@ -151,7 +153,6 @@ export default function Editor() {
     codeRef,
     languageRef,
   });
-
   Sessions({
     roomId,
     setLanguage,
@@ -162,6 +163,7 @@ export default function Editor() {
     setIsLoadingSession,
   });
 
+  // ── Keyboard shortcuts ─────────────────────────────────────────────────────
   useEffect(() => {
     const handleKeyDown = (e) => {
       const isCtrl = e.ctrlKey || e.metaKey;
@@ -172,12 +174,7 @@ export default function Editor() {
       }
       if ((isCtrl && e.key === "Enter") || (isCtrl && e.key === "'")) {
         e.preventDefault();
-        handleRun({
-          codeRef,
-          languageRef,
-          userInput,
-          setMobilePanel,
-        });
+        handleRun({ codeRef, languageRef, userInput, setMobilePanel });
       }
       if (e.key === "Escape") {
         e.preventDefault();
@@ -226,16 +223,57 @@ export default function Editor() {
     navigate,
     showShortcuts,
     showSettings,
+    userInput,
   ]);
 
+  // ── Language switch ────────────────────────────────────────────────────────
+  const handleLanguageChange = useCallback(
+    (e) => {
+      const newLang = e.target.value;
+      const savedCode = codeByLanguage[newLang] || LANGUAGE_TEMPLATES[newLang];
+      setCodeByLanguage((prev) => ({ ...prev, [language]: codeRef.current }));
+      setCode(savedCode);
+      codeRef.current = savedCode;
+      setLanguage(newLang);
+      getSocket().emit("code:change", {
+        roomId,
+        code: savedCode,
+        language: newLang,
+      });
+    },
+    [codeByLanguage, language, roomId],
+  );
+
+  // ── Shared Monaco options ──────────────────────────────────────────────────
+  const mobileMonacoOptions = {
+    fontSize: 12,
+    minimap: { enabled: false },
+    wordWrap: "on",
+    scrollBeyondLastLine: false,
+    automaticLayout: true,
+  };
+
+  const desktopMonacoOptions = {
+    fontSize,
+    tabSize,
+    minimap: { enabled: minimap },
+    wordWrap: wordWrap ? "on" : "off",
+    fontFamily,
+    fontLigatures: ligatures,
+    scrollBeyondLastLine: false,
+    automaticLayout: true,
+  };
+
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div
       className="flex flex-col bg-gray-950 text-gray-200"
       style={{ height: "100dvh", width: "100vw", overflow: "hidden" }}
     >
-      {/* ── TOP BAR ── */}
-      <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 px-3 py-2 bg-gray-900 border-b border-gray-800">
-        <div className="flex items-center gap-2 min-w-0">
+      {/* ── TOP BAR ──────────────────────────────────────────────────────── */}
+      <div className="shrink-0 flex flex-wrap items-center gap-2 px-2 sm:px-3 py-2 bg-gray-900 border-b border-gray-800">
+        {/* Left: back + title */}
+        <div className="flex items-center gap-2 min-w-0 flex-1">
           <button
             onClick={() => {
               saveSession();
@@ -258,12 +296,12 @@ export default function Editor() {
                 saveSession();
               }}
               onKeyDown={(e) => e.key === "Enter" && setIsEditingTitle(false)}
-              className="bg-gray-700 text-white px-2 py-1 rounded text-sm outline-none focus:ring-2 focus:ring-green-500 max-w-35 sm:max-w-xs"
+              className="bg-gray-700 text-white px-2 py-1 rounded text-sm outline-none focus:ring-2 focus:ring-green-500 w-full max-w-[8rem] sm:max-w-xs"
             />
           ) : (
             <span
               onClick={() => setIsEditingTitle(true)}
-              className="text-sm text-gray-300 cursor-pointer hover:text-white truncate max-w-30 sm:max-w-xs"
+              className="text-sm text-gray-300 cursor-pointer hover:text-white truncate max-w-[6rem] xs:max-w-[8rem] sm:max-w-xs"
               title="Click to rename"
             >
               {title} ✏️
@@ -271,27 +309,12 @@ export default function Editor() {
           )}
         </div>
 
-        <div className="flex items-center gap-1.5">
+        {/* Center: language + font size selects */}
+        <div className="flex items-center gap-1.5 shrink-0">
           <select
             value={language ?? ""}
-            onChange={(e) => {
-              const newLang = e.target.value;
-              const savedCode =
-                codeByLanguage[newLang] || LANGUAGE_TEMPLATES[newLang];
-              setCodeByLanguage((prev) => ({
-                ...prev,
-                [language]: codeRef.current,
-              }));
-              setCode(savedCode);
-              codeRef.current = savedCode;
-              setLanguage(newLang);
-              getSocket().emit("code:change", {
-                roomId,
-                code: savedCode,
-                language: newLang,
-              });
-            }}
-            className="bg-gray-700 text-white text-xs px-2 py-1.5 rounded-lg outline-none max-w-27.5"
+            onChange={handleLanguageChange}
+            className="bg-gray-700 text-white text-xs px-2 py-1.5 rounded-lg outline-none max-w-[7rem] sm:max-w-[10rem]"
           >
             {LANGUAGES.map((l) => (
               <option key={l} value={l}>
@@ -302,7 +325,7 @@ export default function Editor() {
           <select
             value={fontSize}
             onChange={(e) => setFontSize(Number(e.target.value))}
-            className="bg-gray-700 text-white text-xs px-2 py-1.5 rounded-lg outline-none w-16"
+            className="bg-gray-700 text-white text-xs px-2 py-1.5 rounded-lg outline-none w-16 hidden sm:block"
           >
             {FONT_SIZES.map((s) => (
               <option key={s} value={s}>
@@ -312,28 +335,9 @@ export default function Editor() {
           </select>
         </div>
 
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <ActionButton onClick={handleCopy} icon="📋" label="Copy" />
-          <ActionButton onClick={handleDownload} icon="⬇️" label="Download" />
-          <ActionButton
-            onClick={() => analyzeComplexity(lastAnalyzedRef, api)}
-            icon="📊"
-            label={isAnalyzing ? "Analyzing…" : "Complexity"}
-            disabled={isAnalyzing}
-            color="purple"
-          />
-          <ActionButton
-            onClick={() => setShowShortcuts(true)}
-            label="Keyboard shortcuts"
-            icon="⌨️"
-          />
-
-          <ActionButton
-            onClick={() => setShowSettings(true)}
-            icon="⚙️"
-            label="Settings"
-          />
-
+        {/* Right: action buttons */}
+        <div className="flex items-center gap-1 flex-wrap justify-end">
+          {/* Always-visible: Save + Run */}
           <ActionButton
             onClick={() => {
               saveSession();
@@ -344,7 +348,6 @@ export default function Editor() {
             disabled={isSaving}
             color="blue"
           />
-
           <ActionButton
             onClick={() =>
               handleRun({ codeRef, languageRef, userInput, setMobilePanel })
@@ -354,12 +357,37 @@ export default function Editor() {
             disabled={isRunning}
             color="green"
           />
+
+          {/* Secondary: hidden on very small screens, visible from sm */}
+          <span className="hidden sm:contents">
+            <ActionButton onClick={handleCopy} icon="📋" label="Copy" />
+            <ActionButton onClick={handleDownload} icon="⬇️" label="Download" />
+            <ActionButton
+              onClick={() => analyzeComplexity(lastAnalyzedRef, api)}
+              icon="📊"
+              label={isAnalyzing ? "Analyzing…" : "Complexity"}
+              disabled={isAnalyzing}
+              color="purple"
+            />
+          </span>
+
+          {/* Settings + shortcuts always visible */}
+          <ActionButton
+            onClick={() => setShowShortcuts(true)}
+            label="Shortcuts"
+            icon="⌨️"
+          />
+          <ActionButton
+            onClick={() => setShowSettings(true)}
+            icon="⚙️"
+            label="Settings"
+          />
         </div>
       </div>
 
-      {/* ── COMPLEXITY BAR ── */}
+      {/* ── COMPLEXITY BAR ───────────────────────────────────────────────── */}
       {complexity && (
-        <div className="shrink-0 flex flex-wrap items-center gap-3 px-4 py-2.5 bg-gray-900 border-b border-purple-800 text-sm">
+        <div className="shrink-0 flex flex-wrap items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 bg-gray-900 border-b border-purple-800 text-xs sm:text-sm">
           <span className="text-gray-400 font-semibold">⏱ Time:</span>
           <span
             className={`font-mono font-bold ${COMPLEXITY_COLOR[complexity.time] ?? "text-white"}`}
@@ -374,25 +402,24 @@ export default function Editor() {
             {complexity.space}
           </span>
           <span className="text-gray-600 hidden sm:inline">|</span>
-          <span className="text-gray-400 italic text-xs sm:text-sm wrap-break-word flex-1 min-w-0">
+          <span className="text-gray-400 italic text-xs flex-1 min-w-0 break-words">
             {complexity.reason}
           </span>
           <button
             onClick={() => setComplexity(null)}
-            className="ml-auto shrink-0 text-gray-500 hover:text-white text-base"
+            className="ml-auto shrink-0 text-gray-500 hover:text-white"
           >
             ✕
           </button>
         </div>
       )}
 
-      {/* ── MAIN CONTENT ── */}
-      {/* ── MAIN CONTENT ── */}
+      {/* ── MAIN CONTENT ─────────────────────────────────────────────────── */}
       <div className="flex-1 min-h-0 overflow-hidden">
-        {/* 📱 MOBILE VIEW */}
+        {/* ── 📱 MOBILE (< md) ── */}
         <div className="md:hidden flex flex-col h-full">
-          {/* EDITOR FULL */}
-          <div className="flex-1">
+          {/* Editor fills remaining space */}
+          <div className="flex-1 min-h-0 overflow-hidden">
             <MonacoEditor
               height="100%"
               language={language}
@@ -402,52 +429,59 @@ export default function Editor() {
                 loadTheme(monacoInstance, themeRef.current, themeCache);
                 editorRef.current = editor;
               }}
-              options={{
-                fontSize: 12,
-                minimap: { enabled: false },
-                wordWrap: "on",
-              }}
+              options={mobileMonacoOptions}
             />
           </div>
 
-          {/* BOTTOM PANEL */}
-          <div className="h-[35%] bg-gray-900 border-t border-gray-800 flex flex-col">
-            {/* TABS */}
-            <div className="flex">
+          {/* Bottom panel — toggleable height */}
+          <div
+            className="shrink-0 bg-gray-900 border-t border-gray-800 flex flex-col transition-all duration-200"
+            style={{ height: bottomExpanded ? "55%" : "38%" }}
+          >
+            {/* Tab bar */}
+            <div className="flex shrink-0 border-b border-gray-800">
               {["input", "output"].map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setMobilePanel(tab)}
-                  className={`flex-1 py-2 text-xs ${
+                  className={`flex-1 py-2 text-xs font-medium transition-colors ${
                     mobilePanel === tab
                       ? "text-green-400 border-b-2 border-green-500"
-                      : "text-gray-400"
+                      : "text-gray-500 hover:text-gray-300"
                   }`}
                 >
                   {tab === "input" ? "📥 Input" : "📤 Output"}
                 </button>
               ))}
+              {/* Expand toggle */}
+              <button
+                onClick={() => setBottomExpanded((v) => !v)}
+                className="px-3 text-gray-500 hover:text-gray-300 text-xs"
+                title="Toggle panel height"
+              >
+                {bottomExpanded ? "▼" : "▲"}
+              </button>
             </div>
 
-            {/* CONTENT */}
-            <div className="flex-1 overflow-hidden">
+            {/* Panel content */}
+            <div className="flex-1 min-h-0 overflow-hidden">
               {mobilePanel === "input" && (
                 <InputPanel userInput={userInput} setUserInput={setUserInput} />
               )}
-
               {mobilePanel === "output" &&
                 (output ? (
                   <OutputPanel output={output} setOutput={setOutput} />
                 ) : (
-                  <div className="flex items-center justify-center h-full text-gray-500">
-                    Run code 🚀
+                  <div className="flex flex-col items-center justify-center h-full gap-2 text-gray-600">
+                    <span className="text-2xl">🚀</span>
+                    <span className="text-xs">Run code to see output</span>
                   </div>
                 ))}
             </div>
           </div>
         </div>
 
-        {/* 💻 DESKTOP VIEW */}
+        {/* ── 💻 DESKTOP (≥ md) ── */}
         <div className="hidden md:flex h-full">
           <ResizablePanels
             left={
@@ -460,14 +494,7 @@ export default function Editor() {
                   loadTheme(monacoInstance, themeRef.current, themeCache);
                   editorRef.current = editor;
                 }}
-                options={{
-                  fontSize,
-                  tabSize,
-                  minimap: { enabled: minimap },
-                  wordWrap: wordWrap ? "on" : "off",
-                  fontFamily,
-                  fontLigatures: ligatures,
-                }}
+                options={desktopMonacoOptions}
               />
             }
             middle={
@@ -477,8 +504,9 @@ export default function Editor() {
               output ? (
                 <OutputPanel output={output} setOutput={setOutput} />
               ) : (
-                <div className="flex items-center justify-center h-full text-gray-500">
-                  Run code to see output 🚀
+                <div className="flex flex-col items-center justify-center h-full gap-2 text-gray-600">
+                  <span className="text-3xl">🚀</span>
+                  <span className="text-sm">Run code to see output</span>
                 </div>
               )
             }
@@ -486,6 +514,7 @@ export default function Editor() {
         </div>
       </div>
 
+      {/* ── DRAWERS / MODALS ──────────────────────────────────────────────── */}
       <SettingsDrawer
         open={showSettings}
         onClose={() => setShowSettings(false)}
@@ -504,7 +533,6 @@ export default function Editor() {
         ligatures={ligatures}
         setLigatures={setLigatures}
       />
-
       <ShortcutsModal
         open={showShortcuts}
         onClose={() => setShowShortcuts(false)}
