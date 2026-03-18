@@ -390,8 +390,9 @@ export default function Editor() {
       {/* ── MAIN CONTENT ── */}
       <div className="flex-1 min-h-0 overflow-hidden">
         {/* 📱 MOBILE VIEW */}
-        <div className="md:hidden h-full">
-          {mobilePanel === "editor" && (
+        <div className="md:hidden flex flex-col h-full">
+          {/* EDITOR FULL */}
+          <div className="flex-1">
             <MonacoEditor
               height="100%"
               language={language}
@@ -402,28 +403,48 @@ export default function Editor() {
                 editorRef.current = editor;
               }}
               options={{
-                fontSize,
-                tabSize,
-                minimap: { enabled: minimap },
-                wordWrap: wordWrap ? "on" : "off",
-                fontFamily,
-                fontLigatures: ligatures,
+                fontSize: 12,
+                minimap: { enabled: false },
+                wordWrap: "on",
               }}
             />
-          )}
+          </div>
 
-          {mobilePanel === "input" && (
-            <InputPanel userInput={userInput} setUserInput={setUserInput} />
-          )}
+          {/* BOTTOM PANEL */}
+          <div className="h-[35%] bg-gray-900 border-t border-gray-800 flex flex-col">
+            {/* TABS */}
+            <div className="flex">
+              {["input", "output"].map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setMobilePanel(tab)}
+                  className={`flex-1 py-2 text-xs ${
+                    mobilePanel === tab
+                      ? "text-green-400 border-b-2 border-green-500"
+                      : "text-gray-400"
+                  }`}
+                >
+                  {tab === "input" ? "📥 Input" : "📤 Output"}
+                </button>
+              ))}
+            </div>
 
-          {mobilePanel === "output" &&
-            (output ? (
-              <OutputPanel output={output} setOutput={setOutput} />
-            ) : (
-              <div className="flex items-center justify-center h-full text-gray-500">
-                Run code to see output 🚀
-              </div>
-            ))}
+            {/* CONTENT */}
+            <div className="flex-1 overflow-hidden">
+              {mobilePanel === "input" && (
+                <InputPanel userInput={userInput} setUserInput={setUserInput} />
+              )}
+
+              {mobilePanel === "output" &&
+                (output ? (
+                  <OutputPanel output={output} setOutput={setOutput} />
+                ) : (
+                  <div className="flex items-center justify-center h-full text-gray-500">
+                    Run code 🚀
+                  </div>
+                ))}
+            </div>
+          </div>
         </div>
 
         {/* 💻 DESKTOP VIEW */}
