@@ -25,7 +25,10 @@ app.use(compression());
 app.set("trust proxy", 1);
 app.use(
   cors({
-    origin: ["http://localhost:5173", "https://collab-code-one.vercel.app"],
+    origin: [
+      "http://localhost:5173",
+      "https://main.d2sikfd2ydhamt.amplifyapp.com",
+    ],
     credentials: true,
   }),
 );
