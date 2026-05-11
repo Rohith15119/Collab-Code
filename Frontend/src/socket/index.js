@@ -1,6 +1,6 @@
 import { io } from "socket.io-client";
 
-const BACKEND_URL = "https://collab-code-backend-hxmi.onrender.com";
+const BACKEND_URL = "https://collabcode17.duckdns.org";
 
 let socket = null;
 
