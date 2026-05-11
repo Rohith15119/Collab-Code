@@ -2,7 +2,7 @@
 
 > A unique session-based online compiler platform where developers write and run code in isolated environments, and share their sessions with others.
 
-🔗 **Live Demo:** [collab-code-one.vercel.app](https://collab-code-one.vercel.app)
+🔗 **Live Demo:** [Collab Code](https://main.d2sikfd2ydhamt.amplifyapp.com/)
 
 ---
 
