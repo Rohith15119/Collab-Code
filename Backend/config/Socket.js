@@ -7,7 +7,10 @@ let io;
 async function initSocket(server) {
   io = new Server(server, {
     cors: {
-      origin: ["http://localhost:5173", "https://collab-code-one.vercel.app"],
+      origin: [
+        "http://localhost:5173",
+        "https://main.d2sikfd2ydhamt.amplifyapp.com",
+      ],
       credentials: true,
     },
   });
