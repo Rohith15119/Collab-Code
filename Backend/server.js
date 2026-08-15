@@ -5,8 +5,10 @@ const http = require("http");
 const helmet = require("helmet");
 const cookieParser = require("cookie-parser");
 const { initSocket } = require("./config/Socket");
+const dns = require("dns");
 
 dotenv.config();
+dns.setServers(["8.8.8.8", "1.1.1.1"]);
 
 const db = require("./controllers/Database");
 const authRoutes = require("./routes/Auth");
@@ -28,6 +30,7 @@ app.use(
     origin: [
       "http://localhost:5173",
       "https://main.d2sikfd2ydhamt.amplifyapp.com",
+      "https://collab-code-navy.vercel.app",
     ],
     credentials: true,
   }),
@@ -167,8 +170,4 @@ initSocket(server);
 
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-});
-
-process.on("unhandledRejection", (reason, promise) => {
-  console.error("Unhandled Rejection:", reason);
 });
