@@ -10,18 +10,17 @@ const redisClient = new Redis(process.env.REDIS_URL, {
   connectTimeout: 10000,
   commandTimeout: 5000,
   maxRetriesPerRequest: 1,
-  enableOfflineQueue: false,
   retryStrategy(times) {
     return Math.min(times * 500, 3000);
   },
 });
 
 redisClient.on("error", (err) => {
-  console.error("Auth Redis Error:", err.message);
+  console.error("Redis connection error:", err.message);
 });
 
 redisClient.on("ready", () => {
-  console.log("Redis connection ready");
+  console.log("Redis is ready");
 });
 
 const loginLimiter = (Millisecs, limit, message, isStore) => {
@@ -38,7 +37,6 @@ const loginLimiter = (Millisecs, limit, message, isStore) => {
       sendCommand: (...args) => redisClient.call(...args),
     });
 
-    // If Redis fails, fail closed for this limiter.
     options.passOnStoreError = false;
   }
 
