@@ -19,6 +19,8 @@ app.use(passport.initialize());
 
 app.post("/register", registerValidation, Auth.RegisterUser);
 
+app.get("/me", authenticate, Auth.VerifyMySelf);
+
 app.post(
   "/login",
   loginLimiter(
