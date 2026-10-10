@@ -25,8 +25,7 @@ const StateMachine = module.exports = exports = function StateMachine() {
  * methods named after each state. These transition methods
  * place their path argument into the given state.
  *
- * @param {String} state
- * @param {String} [state]
+ * @param {...string} state one or more state names
  * @return {Function} subclass constructor
  * @api private
  */
@@ -35,7 +34,6 @@ StateMachine.ctor = function() {
   const states = [...arguments];
 
   const ctor = function() {
-    StateMachine.apply(this, arguments);
     this.paths = {};
     this.states = {};
   };
@@ -70,12 +68,36 @@ StateMachine.prototype._changeState = function _changeState(path, nextState) {
   if (prevState === nextState) {
     return;
   }
-  const prevBucket = this.states[prevState];
-  if (prevBucket) delete prevBucket[path];
+  if (prevState !== undefined) {
+    const prevBucket = this.states[prevState];
+    if (prevBucket) delete prevBucket[path];
+  }
 
   this.paths[path] = nextState;
   this.states[nextState] = this.states[nextState] || {};
   this.states[nextState][path] = true;
+};
+
+/*!
+ * ignore
+ */
+
+StateMachine.prototype.clearAllExcept = function clearAllExcept(state) {
+  // State buckets are created lazily, so `states[state]` may not exist yet.
+  const bucket = this.states[state];
+  const keys = bucket == null ? [] : Object.keys(bucket);
+  if (keys.length === 0) {
+    this.paths = {};
+    this.states = {};
+    return;
+  }
+  this.paths = {};
+  for (const path of keys) {
+    this.paths[path] = state;
+  }
+  this.states = {
+    [state]: this.states[state]
+  };
 };
 
 /*!
@@ -87,13 +109,14 @@ StateMachine.prototype.clear = function clear(state) {
     return;
   }
   const keys = Object.keys(this.states[state]);
+  if (keys.length === 0) {
+    return;
+  }
+  this.states[state] = {};
   let i = keys.length;
-  let path;
 
   while (i--) {
-    path = keys[i];
-    delete this.states[state][path];
-    delete this.paths[path];
+    delete this.paths[keys[i]];
   }
 };
 
@@ -126,7 +149,7 @@ StateMachine.prototype.getStatePaths = function getStatePaths(state) {
  * Checks to see if at least one path is in the states passed in via `arguments`
  * e.g., this.some('required', 'inited')
  *
- * @param {String} state that we want to check for.
+ * @param {string} state that we want to check for.
  * @api private
  */
 
@@ -145,7 +168,7 @@ StateMachine.prototype.some = function some() {
  * This function builds the functions that get assigned to `forEach` and `map`,
  * since both of those methods share a lot of the same logic.
  *
- * @param {String} iterMethod is either 'forEach' or 'map'
+ * @param {string} iterMethod is either 'forEach' or 'map'
  * @return {Function}
  * @api private
  */
@@ -180,8 +203,7 @@ StateMachine.prototype._iter = function _iter(iterMethod) {
  * this.forEach(state1, state2, fn); // iterates over all paths in state1 or state2
  * this.forEach(fn);                 // iterates over all paths in all states
  *
- * @param {String} [state]
- * @param {String} [state]
+ * @param {...string} [state] one or more state names to filter by
  * @param {Function} callback
  * @api private
  */
@@ -199,8 +221,7 @@ StateMachine.prototype.forEach = function forEach() {
  * this.forEach(state1, state2, fn); // iterates over all paths in state1 or state2
  * this.forEach(fn);                 // iterates over all paths in all states
  *
- * @param {String} [state]
- * @param {String} [state]
+ * @param {...string} [state] one or more state names to filter by
  * @param {Function} callback
  * @return {Array}
  * @api private
